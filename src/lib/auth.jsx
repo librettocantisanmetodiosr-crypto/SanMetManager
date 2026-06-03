@@ -9,31 +9,54 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Controlla sessione esistente
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) caricaProfilo(session.user.id)
-      else setLoading(false)
+      if (session?.user) {
+        caricaProfilo(session.user.id)
+      } else {
+        setLoading(false)
+      }
     })
 
-    // Ascolta cambiamenti auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) caricaProfilo(session.user.id)
-      else { setProfilo(null); setLoading(false) }
+      if (session?.user) {
+        caricaProfilo(session.user.id)
+      } else {
+        setProfilo(null)
+        setLoading(false)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   const caricaProfilo = async (userId) => {
-    const { data } = await supabase
-      .from('profili')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setProfilo(data)
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('profili')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Errore caricamento profilo:', error)
+        if (error.code === 'PGRST116') {
+          const { data: newProfilo } = await supabase
+            .from('profili')
+            .insert({ id: userId, username: 'utente', ruolo: 'admin' })
+            .select()
+            .single()
+          setProfilo(newProfilo)
+        }
+      } else {
+        setProfilo(data)
+      }
+    } catch (e) {
+      console.error('Errore:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const login = async (email, password) => {
