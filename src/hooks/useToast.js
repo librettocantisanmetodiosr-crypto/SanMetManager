@@ -11,10 +11,27 @@ export function useToast() {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duration)
   }, [])
 
+  const dismiss = useCallback((id) => {
+    setToasts(t => t.filter(x => x.id !== id))
+  }, [])
+
   const ToastContainer = () => (
-    <div className="toast-container">
+    <div
+      className="toast-container"
+      role="region"
+      aria-live="polite"
+      aria-label="Notifiche"
+    >
       {toasts.map(t => (
-        <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>
+        <div
+          key={t.id}
+          className={`toast ${t.type}`}
+          role="alert"
+          onClick={() => dismiss(t.id)}
+          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+        >
+          {t.msg}
+        </div>
       ))}
     </div>
   )

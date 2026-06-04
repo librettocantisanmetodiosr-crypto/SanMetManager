@@ -150,7 +150,7 @@ export default function Presenze() {
               <option value="">— seleziona data —</option>
               {date.map(d => (
                 <option key={d.id} value={d.id}>
-                  {new Date(d.data).toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'long', year:'numeric' })}
+                  {new Date(d.data + 'T00:00:00').toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'long', year:'numeric' })}
                   {d.descrizione ? ` — ${d.descrizione}` : ''}
                 </option>
               ))}

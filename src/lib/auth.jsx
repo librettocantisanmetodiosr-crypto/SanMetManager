@@ -40,15 +40,16 @@ export function AuthProvider({ children }) {
         .single()
 
       if (error) {
-        console.error('Errore caricamento profilo:', error)
         if (error.code === 'PGRST116') {
-          const { data: newProfilo } = await supabase
+          // Profilo non trovato — ne crea uno base
+          const { data: newProfilo, error: insertErr } = await supabase
             .from('profili')
-            .insert({ id: userId, username: 'utente', ruolo: 'catechista' })
+            .insert({ id: userId, username: `utente_${userId.slice(0,6)}`, ruolo: 'catechista' })
             .select()
             .single()
-          setProfilo(newProfilo)
+          if (!insertErr) setProfilo(newProfilo)
         }
+        // Qualsiasi altro errore: loading finisce e profilo resta null (utente vede pagina vuota)
       } else {
         setProfilo(data)
       }

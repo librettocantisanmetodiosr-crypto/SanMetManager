@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
 
@@ -71,6 +71,13 @@ export default function Layout() {
   useEffect(() => {
     if (sezioneCorrente) setActiveSection(sezioneCorrente.key)
   }, [location.pathname])
+
+  // Chiudi drawer con Escape
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setDrawerOpen(false) }
+    if (drawerOpen) document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
 
   const apriSezione = (key) => {
     setActiveSection(activeSection === key ? null : key)

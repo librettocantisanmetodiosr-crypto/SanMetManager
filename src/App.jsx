@@ -62,7 +62,7 @@ function AppRoutes() {
         <Route path="comitato/lettere"    element={<ProtectedRoute ruoli={['admin','parroco','comitato']}><ComLettere /></ProtectedRoute>} />
         <Route path="comitato/rubrica"    element={<ProtectedRoute ruoli={['admin','parroco','comitato']}><ComRubrica /></ProtectedRoute>} />
         {/* Coro */}
-        <Route path="coro/canti"   element={<CoroCanti />} />
+        <Route path="coro/canti"   element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro','corista']}><CoroCanti /></ProtectedRoute>} />
         <Route path="coro/coristi" element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro']}><CoroCoristi /></ProtectedRoute>} />
         {/* Neocatecumenali */}
         <Route path="neo/comunita" element={<ProtectedRoute ruoli={['admin','parroco','neocatecumenale','responsabile_neo']}><NeoComunit /></ProtectedRoute>} />
