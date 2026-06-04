@@ -287,14 +287,32 @@ alter table public.lettere enable row level security;
 alter table public.canti enable row level security;
 alter table public.canto_attivo enable row level security;
 
--- Profili: ogni utente vede il proprio, admin vede tutti
+-- Profili: ogni utente vede il proprio, admin/segreteria vedono tutti
 create policy "profili_select" on public.profili for select
   using (auth.uid() = id or exists(
     select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria')
   ));
 
-create policy "profili_update_self" on public.profili for update
-  using (auth.uid() = id);
+-- Inserimento profili: auto-registrazione al primo login OPPURE admin/segreteria creano profili per altri
+create policy "profili_insert" on public.profili for insert
+  with check (
+    auth.uid() = id
+    or exists(
+      select 1 from public.profili p
+      where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria')
+    )
+  );
+
+-- Aggiornamento profili: ognuno aggiorna il proprio, admin/segreteria aggiornano tutti
+drop policy if exists "profili_update_self" on public.profili;
+create policy "profili_update" on public.profili for update
+  using (
+    auth.uid() = id
+    or exists(
+      select 1 from public.profili p
+      where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria')
+    )
+  );
 
 -- Classi: tutti gli autenticati leggono, solo admin/segreteria modificano
 create policy "classi_select" on public.classi for select using (auth.role() = 'authenticated');
@@ -329,6 +347,10 @@ create policy "presenze_update" on public.presenze for update using (auth.role()
 create policy "canti_select" on public.canti for select using (true);
 create policy "canti_insert" on public.canti for insert
   with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro')));
+create policy "canti_update" on public.canti for update
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro')));
+create policy "canti_delete" on public.canti for delete
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro')));
 
 -- Canto attivo: tutti leggono, solo responsabile_coro aggiorna
 create policy "canto_attivo_select" on public.canto_attivo for select using (true);
@@ -386,6 +408,40 @@ begin
   order by b.cognome, b.nome;
 end;
 $$ language plpgsql;
+
+-- ═══════════════════════════════════════════════════
+-- STORAGE: bucket PDF canti
+-- ═══════════════════════════════════════════════════
+
+-- Crea il bucket (eseguire in Supabase → Storage → New bucket oppure via SQL):
+insert into storage.buckets (id, name, public)
+  values ('canti-pdf', 'canti-pdf', true)
+  on conflict (id) do nothing;
+
+-- Policy Storage: chiunque può leggere (PDF pubblici)
+create policy "canti_pdf_read" on storage.objects for select
+  using (bucket_id = 'canti-pdf');
+
+-- Policy Storage: solo responsabile_coro/admin può caricare
+create policy "canti_pdf_upload" on storage.objects for insert
+  with check (
+    bucket_id = 'canti-pdf'
+    and exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro'))
+  );
+
+create policy "canti_pdf_delete" on storage.objects for delete
+  using (
+    bucket_id = 'canti-pdf'
+    and exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro'))
+  );
+
+-- ═══════════════════════════════════════════════════
+-- PERMESSI FUNZIONI
+-- ═══════════════════════════════════════════════════
+
+-- Permette agli utenti autenticati di chiamare genera_date_catechismo via RPC
+grant execute on function genera_date_catechismo(int, int) to authenticated;
+grant execute on function stats_presenze_classe(uuid) to authenticated;
 
 -- ═══════════════════════════════════════════════════
 -- DATI INIZIALI
