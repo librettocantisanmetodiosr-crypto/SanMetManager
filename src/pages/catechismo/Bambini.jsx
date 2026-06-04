@@ -63,7 +63,11 @@ export default function Bambini() {
       ? await supabase.from('bambini').insert(dati)
       : await supabase.from('bambini').update(dati).eq('id', modal.id)
     setSaving(false)
-    if (error) return toast('Errore nel salvataggio', 'error')
+    if (error) return toast(
+      error.code === '42501' || error.message?.includes('policy') ? 'Permesso negato (RLS) — esegui il SQL correttivo su Supabase' :
+      error.message?.includes('does not exist') ? 'Tabella bambini non trovata — esegui la migrazione SQL' :
+      'Errore: ' + error.message, 'error', 8000
+    )
     toast(modal === 'nuovo' ? 'Bambino aggiunto ✓' : 'Aggiornato ✓', 'success')
     setModal(null)
     carica()
