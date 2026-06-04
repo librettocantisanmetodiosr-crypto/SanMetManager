@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
+import { inviaBenvenuto } from '../../lib/emailService'
+import { emailConfigured } from '../../lib/emailConfig'
 
 const RUOLI = [
   { value: 'admin',            label: 'Admin',         badge: 'badge-red',   desc: 'Accesso completo a tutto' },
@@ -37,6 +39,7 @@ export default function Utenti() {
   const [filtroRuolo, setFiltroRuolo] = useState('')
   const [cerca, setCerca] = useState('')
   const [mostraPassword, setMostraPassword] = useState(false)
+  const [modalCredenziali, setModalCredenziali] = useState(null) // { nome, cognome, email, password, ruolo }
 
   const isAdmin = ['admin', 'parroco'].includes(profilo?.ruolo)
 
@@ -81,9 +84,15 @@ export default function Utenti() {
       const { data: authData, error: authErr } = await tempClient.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          // Non inviare email di conferma Supabase (usiamo credenziali manuali)
+          emailRedirectTo: null,
+          data: { skip_confirmation: true },
+        },
       })
       if (authErr) {
-        if (authErr.message.includes('already registered')) throw new Error('Email già registrata')
+        if (authErr.message.toLowerCase().includes('already registered') || authErr.message.toLowerCase().includes('already been registered')) throw new Error('Email già registrata')
+        if (authErr.message.toLowerCase().includes('rate limit') || authErr.status === 429) throw new Error('Troppi tentativi in poco tempo — aspetta qualche minuto e riprova. In alternativa, disabilita le email di conferma su Supabase → Authentication → Email → deseleziona "Confirm email".')
         throw authErr
       }
       if (!authData.user) throw new Error('Creazione account fallita — riprova')
@@ -104,10 +113,18 @@ export default function Utenti() {
         throw profErr
       }
 
-      toast(`✓ Utente ${nome} ${cognome} creato. Credenziali: ${email} / ${password}`, 'success', 6000)
       setModalNuovo(false)
       setFormNuovo(vuotoNuovo)
       carica()
+
+      // Mostra credenziali e invia email se configurata
+      const nuovoUtente = { nome, cognome, email: email.trim(), password, ruolo }
+      setModalCredenziali(nuovoUtente)
+      if (emailConfigured()) {
+        inviaBenvenuto(nuovoUtente)
+          .then(() => toast('Email di benvenuto inviata a ' + email.trim(), 'success'))
+          .catch(() => toast('Email non inviata — controlla la configurazione EmailJS', 'error'))
+      }
     } catch (e) {
       toast(e.message || 'Errore nella creazione', 'error')
     }
@@ -231,7 +248,7 @@ export default function Utenti() {
             <div className="modal-title">＋ Nuovo Utente</div>
 
             <div style={{ background: 'var(--primary-bg)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.8rem', color: 'var(--primary)' }}>
-              L'utente riceverà un'email di conferma (se abilitata in Supabase). Le credenziali da comunicare manualmente: email e password inserite qui.
+              Dopo la creazione vedrai le credenziali da condividere. Puoi copiarle o inviarle via email/WhatsApp.
             </div>
 
             <div className="form-row">
@@ -299,6 +316,55 @@ export default function Utenti() {
               <button className="btn btn-primary btn-block" onClick={creaUtente} disabled={creando}>
                 {creando ? <><div className="spinner" style={{ borderTopColor: '#fff' }} />Creazione…</> : 'Crea utente'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: CREDENZIALI NUOVO UTENTE ─────────────────── */}
+      {modalCredenziali && (
+        <div className="modal-overlay" onClick={() => setModalCredenziali(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">✅ Utente creato</div>
+            <div style={{ background: 'var(--primary-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: '0.82rem', color: 'var(--gray-600)', marginBottom: 8 }}>Credenziali da comunicare all'utente:</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{modalCredenziali.nome} {modalCredenziali.cognome}</div>
+              <div style={{ fontSize: '0.85rem', marginTop: 6 }}>
+                <span style={{ color: 'var(--gray-500)' }}>Email: </span>
+                <strong>{modalCredenziali.email}</strong>
+              </div>
+              <div style={{ fontSize: '0.85rem', marginTop: 4 }}>
+                <span style={{ color: 'var(--gray-500)' }}>Password: </span>
+                <strong style={{ fontFamily: 'monospace', background: 'var(--gray-100)', padding: '1px 6px', borderRadius: 4 }}>{modalCredenziali.password}</strong>
+              </div>
+              <div style={{ fontSize: '0.85rem', marginTop: 4 }}>
+                <span style={{ color: 'var(--gray-500)' }}>Link app: </span>
+                <strong>san-met-manager-dda9.vercel.app</strong>
+              </div>
+            </div>
+            {!emailConfigured() && (
+              <div style={{ background: '#fff8e1', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: '0.78rem', color: '#8a6900' }}>
+                Email automatica non configurata. Puoi comunque inviare le credenziali via WhatsApp/email manualmente.
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn btn-outline btn-block"
+                onClick={() => {
+                  const testo = `Ciao ${modalCredenziali.nome}!\n\nTi comunico le credenziali per accedere a SanMetManager:\n\nEmail: ${modalCredenziali.email}\nPassword: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nParrocchia San Metodio`
+                  navigator.clipboard?.writeText(testo)
+                  toast('Testo copiato negli appunti ✓', 'success')
+                }}
+              >📋 Copia</button>
+              <button
+                className="btn btn-outline btn-block"
+                onClick={() => {
+                  const body = encodeURIComponent(`Ciao ${modalCredenziali.nome}!\n\nTi comunico le credenziali per accedere a SanMetManager (app della Parrocchia San Metodio):\n\nEmail: ${modalCredenziali.email}\nPassword temporanea: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nAccedi e cambia la password al primo utilizzo.\n\nParrocchia San Metodio, Siracusa`)
+                  window.open(`mailto:${modalCredenziali.email}?subject=Accesso%20SanMetManager&body=${body}`)
+                }}
+              >✉️ Email</button>
+              <button className="btn btn-primary btn-block" onClick={() => setModalCredenziali(null)}>OK</button>
             </div>
           </div>
         </div>

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
+import { inviaLettera } from '../../lib/emailService'
+import { emailConfigured } from '../../lib/emailConfig'
 
 // ── Costanti template ──────────────────────────────────────────
 const TESTO_INTRO = 'Con la presente comunicazione, il Comitato Parrocchiale della Parrocchia San Metodio di Siracusa desidera portare alla Sua/Vostra cortese attenzione quanto segue:'
@@ -128,6 +130,9 @@ export default function Lettere() {
   const [saving, setSaving] = useState(false)
   const [mostraRubricaDropdown, setMostraRubricaDropdown] = useState(false)
   const [filtroRubrica, setFiltroRubrica] = useState('')
+  const [modalEmail, setModalEmail] = useState(false)
+  const [emailDest, setEmailDest] = useState('')
+  const [inviando, setInviando] = useState(false)
 
   useEffect(() => { carica() }, [])
 
@@ -196,6 +201,57 @@ export default function Lettere() {
   const set = (key) => (e) =>
     setContenuto(c => ({ ...c, [key]: typeof e === 'string' ? e : e.target.value }))
 
+  const apriModalEmail = () => {
+    // Pre-compila con email rubrica se disponibile
+    const contatto = rubrica.find(r =>
+      contenuto.alla_attenzione && r.nome_ente && contenuto.alla_attenzione.includes(r.nome_ente)
+    )
+    setEmailDest(contatto?.email || '')
+    setModalEmail(true)
+  }
+
+  const inviaEmailLettera = async () => {
+    if (!emailDest.trim() || !emailDest.includes('@')) return toast('Inserisci un indirizzo email valido', 'error')
+    setInviando(true)
+    try {
+      const testoPlain = [
+        `${titolo}`,
+        `Siracusa, ${contenuto.data}`,
+        `Alla cortese attenzione di ${contenuto.alla_attenzione}`,
+        `Oggetto: ${contenuto.oggetto}`,
+        '',
+        'Gentile/i ' + contenuto.saluto + ',',
+        '',
+        'Con la presente comunicazione, il Comitato Parrocchiale della Parrocchia San Metodio di Siracusa desidera portare alla Sua/Vostra cortese attenzione quanto segue:',
+        '',
+        contenuto.testo_corpo,
+        '',
+        'Certi della Sua/Vostra collaborazione, restiamo a disposizione per qualsiasi ulteriore chiarimento.',
+        '',
+        'In fede,',
+        contenuto.tipo_firma === 'comitato' ? 'Per il Comitato Parrocchiale' : 'Il Parroco\nPadre Marco Tarascio',
+        '',
+        '— Parrocchia San Metodio, Piazza San Metodio 1, Siracusa',
+      ].join('\n')
+
+      if (emailConfigured()) {
+        await inviaLettera({ emailDest: emailDest.trim(), oggetto: contenuto.oggetto || titolo, testo: testoPlain })
+        toast('Email inviata a ' + emailDest.trim() + ' ✓', 'success')
+        await salva('inviata')
+        setModalEmail(false)
+      } else {
+        // Fallback: apri client email con mailto
+        const body = encodeURIComponent(testoPlain)
+        const subj = encodeURIComponent((contenuto.oggetto || titolo) + ' — Parrocchia San Metodio')
+        window.open(`mailto:${emailDest.trim()}?subject=${subj}&body=${body}`)
+        setModalEmail(false)
+      }
+    } catch {
+      toast('Errore nell\'invio — riprova', 'error')
+    }
+    setInviando(false)
+  }
+
   const selezionaRubrica = (contatto) => {
     const destinatario = contatto.referente
       ? `${contatto.referente}, ${contatto.nome_ente}`
@@ -228,6 +284,7 @@ export default function Lettere() {
             style={{ flex: 1, minWidth: 160 }}
           />
           <button className="btn btn-outline btn-sm" onClick={stampa}>🖨️ Stampa / PDF</button>
+          <button className="btn btn-outline btn-sm" onClick={apriModalEmail}>✉️ Invia email</button>
           <button className="btn btn-primary btn-sm" onClick={() => salva()} disabled={saving}>
             {saving ? 'Salvataggio...' : '💾 Salva'}
           </button>
@@ -400,6 +457,62 @@ export default function Lettere() {
             <button className="btn btn-primary btn-block" onClick={() => salva('inviata')} disabled={saving}>Segna inviata</button>
           </div>
         </div>
+
+        {/* ── Modal: INVIA PER EMAIL ──────────────── */}
+        {modalEmail && (
+          <div className="modal-overlay" onClick={() => setModalEmail(false)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-handle" />
+              <div className="modal-title">✉️ Invia lettera per email</div>
+
+              {!emailConfigured() && (
+                <div style={{ background: '#fff8e1', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: '0.78rem', color: '#8a6900' }}>
+                  EmailJS non configurato — verrà aperto il tuo client email (Outlook, Gmail...) con il testo pre-compilato.
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">Email destinatario</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="es. destinatario@email.it"
+                  value={emailDest}
+                  onChange={e => setEmailDest(e.target.value)}
+                  autoFocus
+                />
+                {rubrica.filter(r => r.email).length > 0 && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {rubrica.filter(r => r.email).slice(0, 8).map(r => (
+                      <div
+                        key={r.id}
+                        onClick={() => setEmailDest(r.email)}
+                        style={{
+                          fontSize: '0.72rem', padding: '3px 10px', borderRadius: 20,
+                          background: emailDest === r.email ? 'var(--primary)' : 'var(--gray-100)',
+                          color: emailDest === r.email ? '#fff' : 'var(--gray-700)',
+                          cursor: 'pointer', fontWeight: 600
+                        }}
+                      >{r.nome_ente}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: 'var(--gray-50)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+                <strong>Oggetto:</strong> {contenuto.oggetto || titolo || '(nessun oggetto)'}<br />
+                <strong>A:</strong> {contenuto.alla_attenzione || '—'}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn btn-outline btn-block" onClick={() => setModalEmail(false)}>Annulla</button>
+                <button className="btn btn-primary btn-block" onClick={inviaEmailLettera} disabled={inviando}>
+                  {inviando ? 'Invio...' : emailConfigured() ? '✉️ Invia' : '✉️ Apri email'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -438,6 +551,11 @@ export default function Lettere() {
                       win.document.write(buildHtml(c, l.titolo, true, window.location.origin))
                       win.document.close()
                     }}>🖨️ Stampa</button>
+                    <button className="btn btn-outline btn-sm btn-icon" title="Invia per email" onClick={() => {
+                      const c = migra(l.contenuto)
+                      const testo = [`Siracusa, ${c.data}`, `Alla cortese attenzione di ${c.alla_attenzione}`, `Oggetto: ${c.oggetto}`, '', `Gentile/i ${c.saluto},`, '', 'Con la presente comunicazione, il Comitato Parrocchiale della Parrocchia San Metodio di Siracusa desidera portare alla Sua/Vostra cortese attenzione quanto segue:', '', c.testo_corpo, '', 'Certi della Sua/Vostra collaborazione, restiamo a disposizione per qualsiasi ulteriore chiarimento.', '', 'In fede,', c.tipo_firma === 'comitato' ? 'Per il Comitato Parrocchiale' : 'Il Parroco — Padre Marco Tarascio'].join('\n')
+                      window.open(`mailto:?subject=${encodeURIComponent((c.oggetto || l.titolo) + ' — Parrocchia San Metodio')}&body=${encodeURIComponent(testo)}`)
+                    }}>✉️</button>
                     <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(l.id)}>🗑</button>
                   </div>
                 </div>
