@@ -30,9 +30,12 @@ export default function Avvisi() {
   const pubblica = async () => {
     if (!form.titolo || !form.testo) return toast('Titolo e testo obbligatori', 'error')
     setSaving(true)
-    await supabase.from('avvisi_neo').insert({ ...form, comunita_id: form.comunita_id || null, autore_id: profilo?.id })
-    toast('Avviso pubblicato', 'success')
-    setSaving(false); setModal(false); setForm({ titolo:'', testo:'', comunita_id:'' }); carica()
+    const { error } = await supabase.from('avvisi_neo').insert({
+      ...form, comunita_id: form.comunita_id || null, autore_id: profilo?.id
+    })
+    if (error) toast('Errore nella pubblicazione', 'error')
+    else { toast('Avviso pubblicato ✓', 'success'); setModal(false); setForm({ titolo:'', testo:'', comunita_id:'' }); carica() }
+    setSaving(false)
   }
 
   const elimina = async (id) => {

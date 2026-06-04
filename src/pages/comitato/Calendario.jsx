@@ -6,14 +6,22 @@ import { useToast } from '../../hooks/useToast'
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']
 const GIORNI_SETT = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom']
 
+const fmtData = (dataStr) => {
+  // Append time to avoid UTC midnight → wrong local day
+  const d = new Date(dataStr + 'T00:00:00')
+  return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
 export default function Calendario() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
+  const canEdit = ['admin','parroco','comitato'].includes(profilo?.ruolo)
   const [eventi, setEventi] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ titolo:'', data:'', ora_inizio:'', ora_fine:'', luogo:'', note:'' })
   const [saving, setSaving] = useState(false)
+  const [giornoSelezionato, setGiornoSelezionato] = useState(null)
   const now = new window.Date()
   const [anno, setAnno] = useState(now.getFullYear())
   const [mese, setMese] = useState(now.getMonth())
@@ -33,18 +41,27 @@ export default function Calendario() {
   const salva = async () => {
     if (!form.titolo || !form.data) return toast('Titolo e data obbligatori', 'error')
     setSaving(true)
-    if (modal === 'nuovo') await supabase.from('eventi_calendario').insert({ ...form, autore_id: profilo?.id })
-    else await supabase.from('eventi_calendario').update(form).eq('id', modal.id)
-    toast('Evento salvato', 'success'); setSaving(false); setModal(null); carica()
+    const { error } = modal === 'nuovo'
+      ? await supabase.from('eventi_calendario').insert({ ...form, autore_id: profilo?.id })
+      : await supabase.from('eventi_calendario').update(form).eq('id', modal.id)
+    if (error) toast('Errore nel salvataggio', 'error')
+    else { toast('Evento salvato ✓', 'success'); setModal(null); carica() }
+    setSaving(false)
   }
 
   const elimina = async (id) => {
     if (!window.confirm('Eliminare questo evento?')) return
     await supabase.from('eventi_calendario').delete().eq('id', id)
-    toast('Evento eliminato', 'success'); carica()
+    toast('Evento eliminato', 'success')
+    carica()
   }
 
-  // Costruisce la griglia del calendario
+  const apriNuovo = (dataPrecompilata) => {
+    setForm({ titolo:'', data: dataPrecompilata || `${anno}-${String(mese+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`, ora_inizio:'', ora_fine:'', luogo:'', note:'' })
+    setModal('nuovo')
+  }
+
+  // Griglia calendario
   const primoGiorno = new window.Date(anno, mese, 1)
   const giorniNelMese = new window.Date(anno, mese + 1, 0).getDate()
   const offset = (primoGiorno.getDay() + 6) % 7 // 0=lun
@@ -59,12 +76,18 @@ export default function Calendario() {
   const mesePrecedente = () => { if (mese === 0) { setMese(11); setAnno(a=>a-1) } else setMese(m=>m-1) }
   const meseSeguente  = () => { if (mese === 11) { setMese(0); setAnno(a=>a+1) } else setMese(m=>m+1) }
 
+  const eventiVisibili = giornoSelezionato
+    ? (giorniConEventi[giornoSelezionato] || [])
+    : eventi
+
   return (
     <div style={{ padding:16 }}>
       <ToastContainer/>
       <div className="flex items-center justify-between mb-4">
         <h1>🗓️ Calendario</h1>
-        <button className="btn btn-primary btn-sm" onClick={() => { setForm({ titolo:'', data:`${anno}-${String(mese+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`, ora_inizio:'', ora_fine:'', luogo:'', note:'' }); setModal('nuovo') }}>＋ Evento</button>
+        {canEdit && (
+          <button className="btn btn-primary btn-sm" onClick={() => apriNuovo()}>＋ Evento</button>
+        )}
       </div>
 
       {/* Navigazione mese */}
@@ -83,42 +106,68 @@ export default function Calendario() {
             {Array.from({ length: giorniNelMese }).map((_, i) => {
               const giorno = i + 1
               const dataStr = `${anno}-${String(mese+1).padStart(2,'0')}-${String(giorno).padStart(2,'0')}`
-              const hasEvt = giorniConEventi[dataStr]
+              const hasEvt = !!giorniConEventi[dataStr]
               const isOggi = dataStr === oggi
+              const isSelected = dataStr === giornoSelezionato
               return (
-                <div key={giorno} onClick={() => hasEvt && null}
-                  style={{ textAlign:'center', padding:'6px 2px', borderRadius:8, fontSize:'0.82rem', fontWeight: isOggi ? 800 : 400,
-                    background: isOggi ? 'var(--primary)' : 'transparent',
-                    color: isOggi ? '#fff' : 'var(--gray-900)', cursor: hasEvt ? 'pointer' : 'default', position:'relative' }}>
+                <div key={giorno}
+                  onClick={() => {
+                    if (hasEvt) setGiornoSelezionato(prev => prev === dataStr ? null : dataStr)
+                    else if (canEdit) apriNuovo(dataStr)
+                  }}
+                  style={{
+                    textAlign:'center', padding:'6px 2px', borderRadius:8, fontSize:'0.82rem',
+                    fontWeight: isOggi ? 800 : 400,
+                    background: isSelected ? 'var(--red)' : isOggi ? 'var(--primary)' : 'transparent',
+                    color: isSelected || isOggi ? '#fff' : 'var(--gray-900)',
+                    cursor: hasEvt || canEdit ? 'pointer' : 'default',
+                    position:'relative',
+                    outline: isSelected ? '2px solid var(--red)' : 'none',
+                  }}>
                   {giorno}
-                  {hasEvt && <div style={{ width:5, height:5, borderRadius:'50%', background: isOggi ? '#fff' : 'var(--red)', margin:'2px auto 0' }} />}
+                  {hasEvt && (
+                    <div style={{ width:5, height:5, borderRadius:'50%', background: isSelected || isOggi ? '#fff' : 'var(--red)', margin:'2px auto 0' }} />
+                  )}
                 </div>
               )
             })}
           </div>
+          {giornoSelezionato && (
+            <div style={{ marginTop:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div className="text-sm" style={{ color:'var(--red)', fontWeight:700 }}>
+                📅 {fmtData(giornoSelezionato)} — {(giorniConEventi[giornoSelezionato]||[]).length} evento/i
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setGiornoSelezionato(null)}>✕ Mostra tutti</button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Lista eventi del mese */}
+      {/* Lista eventi */}
       <h3 style={{ marginBottom:10, fontSize:'0.85rem', color:'var(--gray-500)', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-        {loading ? 'Caricamento...' : `${eventi.length} eventi questo mese`}
+        {loading ? 'Caricamento...' : giornoSelezionato
+          ? `${eventiVisibili.length} eventi in questo giorno`
+          : `${eventi.length} eventi questo mese`
+        }
       </h3>
-      {eventi.length === 0 && !loading ? (
-        <div className="empty-state"><div className="icon">📅</div><p>Nessun evento questo mese</p></div>
+      {eventiVisibili.length === 0 && !loading ? (
+        <div className="empty-state"><div className="icon">📅</div><p>Nessun evento{giornoSelezionato ? ' in questo giorno' : ' questo mese'}</p></div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {eventi.map(e => (
+          {eventiVisibili.map(e => (
             <div key={e.id} className="card" style={{ borderLeft:'4px solid var(--blue)' }}>
               <div className="card-body" style={{ padding:'12px 14px' }}>
                 <div className="flex items-center justify-between" style={{ marginBottom:4 }}>
                   <div style={{ fontWeight:800 }}>{e.titolo}</div>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button className="btn btn-outline btn-sm btn-icon" onClick={() => { setForm({ titolo:e.titolo, data:e.data, ora_inizio:e.ora_inizio||'', ora_fine:e.ora_fine||'', luogo:e.luogo||'', note:e.note||'' }); setModal(e) }}>✏️</button>
-                    <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(e.id)}>🗑</button>
-                  </div>
+                  {canEdit && (
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button className="btn btn-outline btn-sm btn-icon" onClick={() => { setForm({ titolo:e.titolo, data:e.data, ora_inizio:e.ora_inizio||'', ora_fine:e.ora_fine||'', luogo:e.luogo||'', note:e.note||'' }); setModal(e) }}>✏️</button>
+                      <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(e.id)}>🗑</button>
+                    </div>
+                  )}
                 </div>
                 <div className="text-sm text-muted">
-                  📅 {new window.Date(e.data).toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long' })}
+                  📅 {fmtData(e.data)}
                   {e.ora_inizio ? ` · ${e.ora_inizio.slice(0,5)}` : ''}
                   {e.ora_fine ? `–${e.ora_fine.slice(0,5)}` : ''}
                 </div>
@@ -130,7 +179,7 @@ export default function Calendario() {
         </div>
       )}
 
-      {modal && (
+      {modal && canEdit && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-handle"/>

@@ -34,20 +34,22 @@ const migra = (c) => {
 }
 
 // ── HTML per stampa / anteprima ────────────────────────────────
-const buildHtml = (c, titolo, forPrint = true) => `<!DOCTYPE html>
+const buildHtml = (c, titolo, forPrint = true, baseUrl = '') => `<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8"><title>${titolo}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Times New Roman',Georgia,serif;color:#1a1a1a;font-size:12pt;background:#fff;}
   .page{width:210mm;min-height:297mm;position:relative;margin:0 auto;}
   .header-bar{height:5px;background:#2b4fa8;}
-  .header{padding:14px 28px 12px;border-bottom:2px solid #2b4fa8;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
-  .header-left{display:flex;align-items:flex-start;gap:12px;}
-  .logo{width:58px;height:58px;border:2px solid #8b6832;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:8pt;color:#8b6832;font-weight:bold;text-align:center;line-height:1.4;}
+  .header{padding:10px 28px 10px;border-bottom:2px solid #2b4fa8;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .header-left{display:flex;align-items:center;gap:14px;}
+  .logo-comitato{width:72px;height:72px;object-fit:contain;flex-shrink:0;}
+  .logo-parrocchia{width:52px;height:52px;object-fit:contain;flex-shrink:0;}
+  .logo-fallback{width:58px;height:58px;border:2px solid #8b6832;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:8pt;color:#8b6832;font-weight:bold;text-align:center;line-height:1.4;}
   .h-name{font-size:17pt;font-weight:bold;color:#1a1a1a;font-family:Arial,sans-serif;line-height:1.15;}
   .h-sub{font-size:7.5pt;color:#8b6832;text-transform:uppercase;letter-spacing:.18em;margin-top:3px;font-family:Arial,sans-serif;font-weight:bold;}
   .h-par{font-size:9.5pt;color:#5a4530;font-style:italic;margin-top:2px;font-family:Arial,sans-serif;}
-  .header-right{text-align:right;font-size:9pt;color:#5a4530;line-height:1.7;font-family:Arial,sans-serif;margin-top:4px;}
+  .header-right{text-align:right;font-size:9pt;color:#5a4530;line-height:1.7;font-family:Arial,sans-serif;display:flex;align-items:center;gap:10px;}
   .body{padding:22px 36px 80px;}
   .meta{text-align:right;margin-bottom:22px;font-size:11pt;}
   .alla{font-size:11pt;margin-bottom:5px;}
@@ -68,14 +70,19 @@ const buildHtml = (c, titolo, forPrint = true) => `<!DOCTYPE html>
   <div class="header-bar"></div>
   <div class="header">
     <div class="header-left">
-      <div class="logo">✝<br>SAN<br>MET.</div>
+      <img src="${baseUrl}/logo-comitato.png" class="logo-comitato"
+        onerror="this.outerHTML='<div class=\\'logo-fallback\\'>✝<br>SAN<br>MET.</div>'" />
       <div>
         <div class="h-name">Parrocchia San Metodio</div>
         <div class="h-sub">Comitato Parrocchiale</div>
         <div class="h-par">Padre Marco Tarascio, Parroco</div>
       </div>
     </div>
-    <div class="header-right">Piazza San Metodio, 1 — Siracusa<br>Tel. 0931 705664</div>
+    <div class="header-right">
+      <div style="line-height:1.6">Piazza San Metodio, 1 — Siracusa<br>Tel. 0931 705664<br>parrocchiasanmetodio@email.it</div>
+      <img src="${baseUrl}/logo-parrocchia.png" class="logo-parrocchia"
+        onerror="this.style.display='none'" />
+    </div>
   </div>
 
   <div class="body">
@@ -182,7 +189,7 @@ export default function Lettere() {
 
   const stampa = () => {
     const win = window.open('', '_blank')
-    win.document.write(buildHtml(contenuto, titolo, true))
+    win.document.write(buildHtml(contenuto, titolo, true, window.location.origin))
     win.document.close()
   }
 
@@ -204,7 +211,7 @@ export default function Lettere() {
 
   // ─────────────────────────────────────────────────────────────
   if (vista === 'editor') {
-    const htmlAnteprima = buildHtml(contenuto, titolo, false)
+    const htmlAnteprima = buildHtml(contenuto, titolo, false, window.location.origin)
 
     return (
       <div style={{ padding: 16 }}>
@@ -428,7 +435,7 @@ export default function Lettere() {
                     <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => {
                       const c = migra(l.contenuto)
                       const win = window.open('', '_blank')
-                      win.document.write(buildHtml(c, l.titolo, true))
+                      win.document.write(buildHtml(c, l.titolo, true, window.location.origin))
                       win.document.close()
                     }}>🖨️ Stampa</button>
                     <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(l.id)}>🗑</button>

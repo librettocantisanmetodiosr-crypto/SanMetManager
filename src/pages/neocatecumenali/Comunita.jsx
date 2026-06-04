@@ -33,18 +33,24 @@ export default function Comunita() {
   const salvaComunita = async () => {
     if (!form.nome) return toast('Nome obbligatorio', 'error')
     setSaving(true)
-    if (modal === 'nuova') await supabase.from('comunita_neo').insert(form)
-    else await supabase.from('comunita_neo').update(form).eq('id', modal.id)
-    toast('Salvato', 'success'); setSaving(false); setModal(null); caricaComunita()
+    const { error } = modal === 'nuova'
+      ? await supabase.from('comunita_neo').insert(form)
+      : await supabase.from('comunita_neo').update(form).eq('id', modal.id)
+    if (error) toast('Errore nel salvataggio', 'error')
+    else { toast('Salvato ✓', 'success'); setModal(null); caricaComunita() }
+    setSaving(false)
   }
 
   const salvaMembro = async () => {
     if (!formMembro.nome || !formMembro.cognome) return toast('Nome e cognome obbligatori', 'error')
     setSaving(true)
     const dati = { ...formMembro, comunita_id: comunItaSelezionata }
-    if (modalMembro === 'nuovo') await supabase.from('membri_neo').insert(dati)
-    else await supabase.from('membri_neo').update(dati).eq('id', modalMembro.id)
-    toast('Membro salvato', 'success'); setSaving(false); setModalMembro(null); caricaMembri(comunItaSelezionata)
+    const { error } = modalMembro === 'nuovo'
+      ? await supabase.from('membri_neo').insert(dati)
+      : await supabase.from('membri_neo').update(dati).eq('id', modalMembro.id)
+    if (error) toast('Errore nel salvataggio', 'error')
+    else { toast('Membro salvato ✓', 'success'); setModalMembro(null); caricaMembri(comunItaSelezionata) }
+    setSaving(false)
   }
 
   const eliminaMembro = async (id) => {
