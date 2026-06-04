@@ -39,9 +39,10 @@ export default function Utenti() {
   const [filtroRuolo, setFiltroRuolo] = useState('')
   const [cerca, setCerca] = useState('')
   const [mostraPassword, setMostraPassword] = useState(false)
-  const [modalCredenziali, setModalCredenziali] = useState(null) // { nome, cognome, email, password, ruolo }
-  const [modalReset, setModalReset] = useState(null)            // utente da resettare
-  const [emailReset, setEmailReset] = useState('')
+  const [modalCredenziali, setModalCredenziali] = useState(null)
+  const [modalReset, setModalReset] = useState(null)
+  const [nuovaPassword, setNuovaPassword] = useState('')
+  const [mostraPasswordReset, setMostraPasswordReset] = useState(false)
   const [inviandoReset, setInviandoReset] = useState(false)
 
   const isAdmin = ['admin', 'parroco'].includes(profilo?.ruolo)
@@ -165,17 +166,28 @@ export default function Utenti() {
   }
 
   const apriReset = (u) => {
-    setEmailReset('')
+    setNuovaPassword('')
+    setMostraPasswordReset(false)
     setModalReset(u)
   }
 
-  const inviaReset = async () => {
-    if (!emailReset.trim() || !emailReset.includes('@')) return toast('Inserisci un\'email valida', 'error')
+  const eseguiReset = async () => {
+    if (nuovaPassword.length < 6) return toast('La password deve essere di almeno 6 caratteri', 'error')
     setInviandoReset(true)
-    const { error } = await resetPassword(emailReset.trim())
+    const { error } = await supabase.rpc('reset_user_password', {
+      target_user_id: modalReset.id,
+      new_password: nuovaPassword,
+    })
     setInviandoReset(false)
-    if (error) toast('Errore: ' + error.message, 'error')
-    else { toast(`Email di reset inviata a ${emailReset.trim()} ✓`, 'success'); setModalReset(null) }
+    if (error) {
+      if (error.message?.includes('Non autorizzato')) toast('Non hai i permessi per questa operazione', 'error')
+      else if (error.message?.includes('reset_user_password')) toast('Funzione non trovata — esegui prima il SQL in Supabase (vedi istruzioni)', 'error')
+      else toast('Errore: ' + error.message, 'error')
+    } else {
+      setModalReset(null)
+      setModalCredenziali({ nome: modalReset.nome, cognome: modalReset.cognome, password: nuovaPassword, soloReset: true })
+      toast('Password aggiornata ✓', 'success')
+    }
   }
 
   const badgeRuolo = (ruolo) => {
@@ -346,42 +358,45 @@ export default function Utenti() {
             <div className="modal-handle" />
             <div className="modal-title">✅ Utente creato</div>
             <div style={{ background: 'var(--primary-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: '0.82rem', color: 'var(--gray-600)', marginBottom: 8 }}>Credenziali da comunicare all'utente:</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{modalCredenziali.nome} {modalCredenziali.cognome}</div>
-              <div style={{ fontSize: '0.85rem', marginTop: 6 }}>
-                <span style={{ color: 'var(--gray-500)' }}>Email: </span>
-                <strong>{modalCredenziali.email}</strong>
+              <div style={{ fontSize: '0.82rem', color: 'var(--gray-600)', marginBottom: 8 }}>
+                {modalCredenziali.soloReset ? 'Nuova password per:' : 'Credenziali da comunicare all\'utente:'}
               </div>
-              <div style={{ fontSize: '0.85rem', marginTop: 4 }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{modalCredenziali.nome} {modalCredenziali.cognome}</div>
+              {!modalCredenziali.soloReset && (
+                <div style={{ fontSize: '0.85rem', marginTop: 6 }}>
+                  <span style={{ color: 'var(--gray-500)' }}>Email: </span>
+                  <strong>{modalCredenziali.email}</strong>
+                </div>
+              )}
+              <div style={{ fontSize: '0.85rem', marginTop: 6 }}>
                 <span style={{ color: 'var(--gray-500)' }}>Password: </span>
-                <strong style={{ fontFamily: 'monospace', background: 'var(--gray-100)', padding: '1px 6px', borderRadius: 4 }}>{modalCredenziali.password}</strong>
+                <strong style={{ fontFamily: 'monospace', background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4, fontSize: '1rem' }}>{modalCredenziali.password}</strong>
               </div>
               <div style={{ fontSize: '0.85rem', marginTop: 4 }}>
                 <span style={{ color: 'var(--gray-500)' }}>Link app: </span>
                 <strong>san-met-manager-dda9.vercel.app</strong>
               </div>
             </div>
-            {!emailConfigured() && (
-              <div style={{ background: '#fff8e1', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: '0.78rem', color: '#8a6900' }}>
-                Email automatica non configurata. Puoi comunque inviare le credenziali via WhatsApp/email manualmente.
-              </div>
-            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 className="btn btn-outline btn-block"
                 onClick={() => {
-                  const testo = `Ciao ${modalCredenziali.nome}!\n\nTi comunico le credenziali per accedere a SanMetManager:\n\nEmail: ${modalCredenziali.email}\nPassword: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nParrocchia San Metodio`
+                  const testo = modalCredenziali.soloReset
+                    ? `Ciao ${modalCredenziali.nome}!\n\nLa tua password su SanMetManager è stata reimpostata:\n\nNuova password: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nParrocchia San Metodio`
+                    : `Ciao ${modalCredenziali.nome}!\n\nTi comunico le credenziali per accedere a SanMetManager:\n\nEmail: ${modalCredenziali.email}\nPassword: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nParrocchia San Metodio`
                   navigator.clipboard?.writeText(testo)
                   toast('Testo copiato negli appunti ✓', 'success')
                 }}
               >📋 Copia</button>
-              <button
-                className="btn btn-outline btn-block"
-                onClick={() => {
-                  const body = encodeURIComponent(`Ciao ${modalCredenziali.nome}!\n\nTi comunico le credenziali per accedere a SanMetManager (app della Parrocchia San Metodio):\n\nEmail: ${modalCredenziali.email}\nPassword temporanea: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nAccedi e cambia la password al primo utilizzo.\n\nParrocchia San Metodio, Siracusa`)
-                  window.open(`mailto:${modalCredenziali.email}?subject=Accesso%20SanMetManager&body=${body}`)
-                }}
-              >✉️ Email</button>
+              {!modalCredenziali.soloReset && (
+                <button
+                  className="btn btn-outline btn-block"
+                  onClick={() => {
+                    const body = encodeURIComponent(`Ciao ${modalCredenziali.nome}!\n\nTi comunico le credenziali per accedere a SanMetManager:\n\nEmail: ${modalCredenziali.email}\nPassword: ${modalCredenziali.password}\nLink: https://san-met-manager-dda9.vercel.app\n\nParrocchia San Metodio, Siracusa`)
+                    window.open(`mailto:${modalCredenziali.email}?subject=Accesso%20SanMetManager&body=${body}`)
+                  }}
+                >✉️ Email</button>
+              )}
               <button className="btn btn-primary btn-block" onClick={() => setModalCredenziali(null)}>OK</button>
             </div>
           </div>
@@ -393,29 +408,34 @@ export default function Utenti() {
         <div className="modal-overlay" onClick={() => setModalReset(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-handle" />
-            <div className="modal-title">🔑 Reimposta password</div>
+            <div className="modal-title">🔑 Nuova password</div>
             <p style={{ fontSize: '0.85rem', color: 'var(--gray-600)', marginBottom: 16 }}>
-              Verrà inviata un'email a <strong>{modalReset.nome} {modalReset.cognome}</strong> con un link per impostare una nuova password.
+              Imposta una nuova password per <strong>{modalReset.nome} {modalReset.cognome}</strong>.
+              Dopo potrai copiarla e comunicarla direttamente all'utente.
             </p>
             <div className="form-group">
-              <label className="form-label">Email dell'utente</label>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="email@esempio.it"
-                value={emailReset}
-                onChange={e => setEmailReset(e.target.value)}
-                autoFocus
-                onKeyDown={e => e.key === 'Enter' && inviaReset()}
-              />
-            </div>
-            <div style={{ background: 'var(--primary-bg)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.78rem', color: 'var(--primary)' }}>
-              L'utente riceverà un link valido 1 ora. Cliccandolo aprirà l'app e potrà scegliere la nuova password.
+              <label className="form-label">Nuova password (min. 6 caratteri)</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={mostraPasswordReset ? 'text' : 'password'}
+                  className="form-control"
+                  placeholder="••••••••"
+                  value={nuovaPassword}
+                  onChange={e => setNuovaPassword(e.target.value)}
+                  autoFocus
+                  onKeyDown={e => e.key === 'Enter' && eseguiReset()}
+                  style={{ paddingRight: 44 }}
+                />
+                <button type="button" onClick={() => setMostraPasswordReset(v => !v)}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--gray-500)' }}>
+                  {mostraPasswordReset ? '🙈' : '👁'}
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-outline btn-block" onClick={() => setModalReset(null)}>Annulla</button>
-              <button className="btn btn-primary btn-block" onClick={inviaReset} disabled={inviandoReset}>
-                {inviandoReset ? 'Invio...' : '✉️ Invia link reset'}
+              <button className="btn btn-primary btn-block" onClick={eseguiReset} disabled={inviandoReset}>
+                {inviandoReset ? 'Aggiornamento...' : '✓ Salva password'}
               </button>
             </div>
           </div>
