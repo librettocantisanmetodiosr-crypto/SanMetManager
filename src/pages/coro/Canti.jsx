@@ -96,42 +96,38 @@ export default function Canti() {
   const [filtroAnni, setFiltroAnni] = useState([])
   const [filtroTempo, setFiltroTempo] = useState('')
 
-  // Refs per realtime (evitare stale closure)
-  const cantiRef  = useRef([])
-  const isRespRef = useRef(false)
-  const channelRef = useRef(null)
-  useEffect(() => { cantiRef.current  = canti  }, [canti])
-  useEffect(() => { isRespRef.current = isResp }, [isResp])
+  // Refs per evitare stale closure nei callback asincroni
+  const cantiRef      = useRef([])
+  const isRespRef     = useRef(false)
+  const cantoAttivoRef = useRef(null)
+  useEffect(() => { cantiRef.current      = canti       }, [canti])
+  useEffect(() => { isRespRef.current     = isResp      }, [isResp])
+  useEffect(() => { cantoAttivoRef.current = cantoAttivo }, [cantoAttivo])
 
   useEffect(() => {
     caricaCanti()
     caricaCantoAttivo()
+  }, [])
 
-    const ch = supabase.channel('coro_sessione', { config: { broadcast: { self: false } } })
-      // Broadcast diretto — non dipende dal realtime DB
-      .on('broadcast', { event: 'canto_lanciato' }, ({ payload }) => {
-        setCantoAttivo(payload.canto_id)
-        if (!isRespRef.current) {
-          if (payload.canto_id) {
-            const c = cantiRef.current.find(x => x.id === payload.canto_id)
-            if (c) { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo) }
-          } else {
-            setVistaModal(null)
-          }
+  // Polling ogni 3s — garantisce aggiornamento su tutti i dispositivi
+  // indipendentemente dalla configurazione del realtime Supabase
+  useEffect(() => {
+    const poll = async () => {
+      const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).single()
+      const nuovoId = data?.canto_id ?? null
+      if (nuovoId === cantoAttivoRef.current) return  // nessun cambiamento
+      setCantoAttivo(nuovoId)
+      if (!isRespRef.current) {
+        if (nuovoId) {
+          const c = cantiRef.current.find(x => x.id === nuovoId)
+          if (c) { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo) }
+        } else {
+          setVistaModal(null)
         }
-      })
-      // Fallback: postgres_changes (funziona solo se la tabella ha realtime abilitato)
-      .on('postgres_changes', { event:'UPDATE', schema:'public', table:'canto_attivo' }, payload => {
-        setCantoAttivo(payload.new.canto_id)
-        if (payload.new.canto_id && !isRespRef.current) {
-          const c = cantiRef.current.find(x => x.id === payload.new.canto_id)
-          if (c) { setVistaModal(c); setVistaPdf(false) }
-        }
-      })
-      .subscribe()
-
-    channelRef.current = ch
-    return () => { supabase.removeChannel(ch); channelRef.current = null }
+      }
+    }
+    const timer = setInterval(poll, 3000)
+    return () => clearInterval(timer)
   }, [])
 
   // Escape chiude modali
@@ -152,21 +148,18 @@ export default function Canti() {
   }
 
   const caricaCantoAttivo = async () => {
-    const { data } = await supabase.from('canto_attivo').select('canto_id').single()
-    setCantoAttivo(data?.canto_id)
+    const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).single()
+    setCantoAttivo(data?.canto_id ?? null)
   }
 
   const lancia = async (cantoId) => {
     const stop = cantoAttivo === cantoId
     const nuovoId = stop ? null : cantoId
-    // Aggiorna DB
     await supabase.from('canto_attivo').update({
       canto_id: nuovoId,
       lanciato_da: profilo?.id,
       lanciato_at: new Date().toISOString(),
     }).eq('id', 1)
-    // Broadcast a tutti i coristi connessi (immediato, senza dipendere dal realtime DB)
-    channelRef.current?.send({ type: 'broadcast', event: 'canto_lanciato', payload: { canto_id: nuovoId } })
     setCantoAttivo(nuovoId)
     if (stop) toast('Canto fermato', 'default')
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
