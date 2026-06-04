@@ -93,11 +93,10 @@ export default function Canti() {
   const [filtroTempo, setFiltroTempo] = useState('')
 
   // Refs per evitare stale closure nei callback asincroni
-  const cantiRef      = useRef([])
-  const isRespRef     = useRef(false)
+  const cantiRef       = useRef([])
   const cantoAttivoRef = useRef(null)
+  const lanciatoQuiRef = useRef(false) // true se il lancio è partito da questo dispositivo
   useEffect(() => { cantiRef.current      = canti       }, [canti])
-  useEffect(() => { isRespRef.current     = isResp      }, [isResp])
   useEffect(() => { cantoAttivoRef.current = cantoAttivo }, [cantoAttivo])
 
   useEffect(() => {
@@ -105,17 +104,24 @@ export default function Canti() {
     caricaCantoAttivo()
   }, [])
 
-  // Polling ogni 3s — garantisce aggiornamento su tutti i dispositivi
-  // indipendentemente dalla configurazione del realtime Supabase
+  // Polling ogni 3s — apre il modal su tutti i dispositivi che NON hanno
+  // fatto il lancio (indipendentemente dal ruolo)
   useEffect(() => {
     const poll = async () => {
       const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).single()
       const nuovoId = data?.canto_id ?? null
-      if (nuovoId === cantoAttivoRef.current) return  // nessun cambiamento
+      if (nuovoId === cantoAttivoRef.current) return
       setCantoAttivo(nuovoId)
-      if (!isRespRef.current) {
+      // Se il cambio è arrivato da un altro dispositivo, apri/chiudi il modal
+      if (!lanciatoQuiRef.current) {
         if (nuovoId) {
-          const c = cantiRef.current.find(x => x.id === nuovoId)
+          let c = cantiRef.current.find(x => x.id === nuovoId)
+          if (!c) {
+            // Canti non ancora caricati: li carica e riprova
+            const { data: tutti } = await supabase.from('canti').select('*').order('categoria').order('titolo')
+            if (tutti) { setCanti(tutti); cantiRef.current = tutti }
+            c = (tutti || []).find(x => x.id === nuovoId)
+          }
           if (c) { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo) }
         } else {
           setVistaModal(null)
@@ -151,12 +157,15 @@ export default function Canti() {
   const lancia = async (cantoId) => {
     const stop = cantoAttivo === cantoId
     const nuovoId = stop ? null : cantoId
+    lanciatoQuiRef.current = true
     await supabase.from('canto_attivo').update({
       canto_id: nuovoId,
       lanciato_da: profilo?.id,
       lanciato_at: new Date().toISOString(),
     }).eq('id', 1)
     setCantoAttivo(nuovoId)
+    // Dopo 4s (più di un ciclo di polling) resetta il flag
+    setTimeout(() => { lanciatoQuiRef.current = false }, 4000)
     if (stop) toast('Canto fermato', 'default')
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
   }
