@@ -108,24 +108,23 @@ export default function Canti() {
   // fatto il lancio (indipendentemente dal ruolo)
   useEffect(() => {
     const poll = async () => {
+      // Se abbiamo appena lanciato noi, aspettiamo che il DB si aggiorni
+      if (lanciatoQuiRef.current) return
       const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).maybeSingle()
       const nuovoId = data?.canto_id ?? null
       if (nuovoId === cantoAttivoRef.current) return
+      // Cambio arrivato da altro dispositivo
       setCantoAttivo(nuovoId)
-      // Se il cambio è arrivato da un altro dispositivo, apri/chiudi il modal
-      if (!lanciatoQuiRef.current) {
-        if (nuovoId) {
-          let c = cantiRef.current.find(x => x.id === nuovoId)
-          if (!c) {
-            // Canti non ancora caricati: li carica e riprova
-            const { data: tutti } = await supabase.from('canti').select('*').order('categoria').order('titolo')
-            if (tutti) { setCanti(tutti); cantiRef.current = tutti }
-            c = (tutti || []).find(x => x.id === nuovoId)
-          }
-          if (c) { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo) }
-        } else {
-          setVistaModal(null)
+      if (nuovoId) {
+        let c = cantiRef.current.find(x => x.id === nuovoId)
+        if (!c) {
+          const { data: tutti } = await supabase.from('canti').select('*').order('categoria').order('titolo')
+          if (tutti) { setCanti(tutti); cantiRef.current = tutti }
+          c = (tutti || []).find(x => x.id === nuovoId)
         }
+        if (c) { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo) }
+      } else {
+        setVistaModal(null)
       }
     }
     const timer = setInterval(poll, 3000)
@@ -158,15 +157,14 @@ export default function Canti() {
     const stop = cantoAttivo === cantoId
     const nuovoId = stop ? null : cantoId
     lanciatoQuiRef.current = true
-    // upsert: funziona anche se la riga non esiste ancora
-    await supabase.from('canto_attivo').upsert({
-      id: 1,
+    await supabase.from('canto_attivo').update({
       canto_id: nuovoId,
       lanciato_da: profilo?.id,
       lanciato_at: new Date().toISOString(),
-    })
+    }).eq('id', 1)
     setCantoAttivo(nuovoId)
-    setTimeout(() => { lanciatoQuiRef.current = false }, 4000)
+    // Blocca il poll per 7s (due cicli) così il DB fa in tempo ad aggiornarsi
+    setTimeout(() => { lanciatoQuiRef.current = false }, 7000)
     if (stop) toast('Canto fermato', 'default')
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
   }
