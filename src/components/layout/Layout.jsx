@@ -13,7 +13,6 @@ const SEZIONI = [
       { path: '/catechismo/report',    label: 'Report',    icon: '📊' },
       { path: '/catechismo/date',      label: 'Date',      icon: '📅', ruoli: ['admin','parroco','segreteria'] },
       { path: '/catechismo/supplenze', label: 'Supplenze', icon: '🔄', ruoli: ['admin','parroco','segreteria'] },
-      { path: '/catechismo/utenti',    label: 'Utenti',    icon: '👤', ruoli: ['admin','parroco','segreteria'] },
       { path: '/bacheca',              label: 'Bacheca',   icon: '📌' },
     ]
   },
@@ -41,6 +40,13 @@ const SEZIONI = [
       { path: '/neo/comunita', label: 'Comunità', icon: '🕊️' },
       { path: '/neo/stanze',   label: 'Stanze',   icon: '🚪' },
       { path: '/neo/avvisi',   label: 'Avvisi',   icon: '📢' },
+    ]
+  },
+  {
+    key: 'admin', label: 'Amministrazione', icon: '⚙️', color: 'var(--gray-700)',
+    ruoli: ['admin','parroco','segreteria'],
+    voci: [
+      { path: '/admin/utenti', label: 'Utenti', icon: '👤' },
     ]
   },
 ]

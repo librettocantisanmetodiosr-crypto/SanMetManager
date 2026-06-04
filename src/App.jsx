@@ -53,10 +53,12 @@ function AppRoutes() {
         <Route path="catechismo/bambini"  element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista']}><CatBambini /></ProtectedRoute>} />
         <Route path="catechismo/presenze" element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista']}><CatPresenze /></ProtectedRoute>} />
         <Route path="catechismo/date"     element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatDate /></ProtectedRoute>} />
-        <Route path="catechismo/utenti"    element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatUtenti /></ProtectedRoute>} />
         <Route path="catechismo/supplenze" element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatSupplenze /></ProtectedRoute>} />
         <Route path="catechismo/report"    element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista']}><CatReport /></ProtectedRoute>} />
         <Route path="bacheca"              element={<ProtectedRoute><Bacheca /></ProtectedRoute>} />
+        {/* Admin — Utenti (vecchio path reindirizzato) */}
+        <Route path="catechismo/utenti"    element={<Navigate to="/admin/utenti" replace />} />
+        <Route path="admin/utenti"         element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatUtenti /></ProtectedRoute>} />
         {/* Comitato */}
         <Route path="comitato/calendario" element={<ProtectedRoute ruoli={['admin','parroco','comitato']}><ComCalendario /></ProtectedRoute>} />
         <Route path="comitato/lettere"    element={<ProtectedRoute ruoli={['admin','parroco','comitato']}><ComLettere /></ProtectedRoute>} />
