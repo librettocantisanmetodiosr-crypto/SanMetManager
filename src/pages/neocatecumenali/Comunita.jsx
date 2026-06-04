@@ -33,10 +33,21 @@ export default function Comunita() {
   const salvaComunita = async () => {
     if (!form.nome) return toast('Nome obbligatorio', 'error')
     setSaving(true)
+    const dati = {
+      nome: form.nome.trim(),
+      anno_cammino: form.anno_cammino !== '' ? parseInt(form.anno_cammino) : null,
+      responsabile1: form.responsabile1 || null,
+      responsabile2: form.responsabile2 || null,
+      note: form.note || null,
+    }
     const { error } = modal === 'nuova'
-      ? await supabase.from('comunita_neo').insert(form)
-      : await supabase.from('comunita_neo').update(form).eq('id', modal.id)
-    if (error) toast('Errore nel salvataggio', 'error')
+      ? await supabase.from('comunita_neo').insert(dati)
+      : await supabase.from('comunita_neo').update(dati).eq('id', modal.id)
+    if (error) toast(
+      error.code === '42501' || error.message?.includes('policy') ? 'Permesso negato (RLS) — esegui il SQL correttivo su Supabase' :
+      error.message?.includes('does not exist') ? 'Tabella non trovata — esegui la migrazione SQL' :
+      'Errore: ' + error.message, 'error', 8000
+    )
     else { toast('Salvato ✓', 'success'); setModal(null); caricaComunita() }
     setSaving(false)
   }
@@ -44,11 +55,21 @@ export default function Comunita() {
   const salvaMembro = async () => {
     if (!formMembro.nome || !formMembro.cognome) return toast('Nome e cognome obbligatori', 'error')
     setSaving(true)
-    const dati = { ...formMembro, comunita_id: comunItaSelezionata }
+    const dati = {
+      nome: formMembro.nome.trim(),
+      cognome: formMembro.cognome.trim(),
+      telefono: formMembro.telefono || null,
+      anno_cammino: formMembro.anno_cammino !== '' ? parseInt(formMembro.anno_cammino) : null,
+      note: formMembro.note || null,
+      comunita_id: comunItaSelezionata,
+    }
     const { error } = modalMembro === 'nuovo'
       ? await supabase.from('membri_neo').insert(dati)
       : await supabase.from('membri_neo').update(dati).eq('id', modalMembro.id)
-    if (error) toast('Errore nel salvataggio', 'error')
+    if (error) toast(
+      error.code === '42501' || error.message?.includes('policy') ? 'Permesso negato (RLS) — esegui il SQL correttivo su Supabase' :
+      'Errore: ' + error.message, 'error', 8000
+    )
     else { toast('Membro salvato ✓', 'success'); setModalMembro(null); caricaMembri(comunItaSelezionata) }
     setSaving(false)
   }
