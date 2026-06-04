@@ -24,26 +24,47 @@ export default function Login() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: 'linear-gradient(160deg, var(--primary) 0%, #0d4a29 100%)',
+      minHeight: '100vh',
+      position: 'relative',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
     }}>
-      <div style={{ width: '100%', maxWidth: 380 }}>
+      {/* Sfondo chiesa */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 0,
+        backgroundImage: 'url(/chiesa.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center 40%',
+      }} />
+      {/* Overlay sfumato */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 1,
+        background: 'linear-gradient(160deg, rgba(7,82,50,0.88) 0%, rgba(20,50,100,0.82) 100%)',
+      }} />
 
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32, color: '#fff' }}>
-          <div style={{ fontSize: '3.5rem', marginBottom: 8 }}>✝️</div>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.08em' }}>
+      {/* Contenuto */}
+      <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 2 }}>
+
+        {/* Logo e titolo */}
+        <div style={{ textAlign: 'center', marginBottom: 28, color: '#fff' }}>
+          <img
+            src="/logo-comitato.png"
+            alt="Comitato San Metodio"
+            style={{ width: 96, height: 96, objectFit: 'contain', marginBottom: 10, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }}
+            onError={e => { e.currentTarget.style.display = 'none'; document.getElementById('login-icon').style.display = 'block' }}
+          />
+          <div id="login-icon" style={{ display: 'none', fontSize: '3.5rem', marginBottom: 8 }}>✝️</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.08em', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
             SanMetManager
           </div>
-          <div style={{ fontSize: '0.82rem', opacity: 0.75, marginTop: 4 }}>
+          <div style={{ fontSize: '0.82rem', opacity: 0.8, marginTop: 4 }}>
             Parrocchia San Metodio — Siracusa
           </div>
         </div>
 
         {/* Card login */}
         <div style={{
-          background: '#fff', borderRadius: 20, padding: '28px 24px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.25)'
+          background: 'rgba(255,255,255,0.97)', borderRadius: 20, padding: '28px 24px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
         }}>
           <h2 style={{ marginBottom: 20, color: 'var(--gray-900)' }}>Accedi</h2>
           <form onSubmit={handleSubmit}>
@@ -86,7 +107,7 @@ export default function Login() {
           </form>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 20, color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem' }}>
+        <div style={{ textAlign: 'center', marginTop: 20, color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem' }}>
           Per problemi di accesso contatta l'amministratore
         </div>
       </div>

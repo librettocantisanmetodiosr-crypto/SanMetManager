@@ -88,12 +88,31 @@ export default function Dashboard() {
   return (
     <div style={{ padding: 16 }}>
 
-      {/* Saluto */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ color: 'var(--gray-900)' }}>{saluto}, {profilo?.nome || 'benvenuto'} 👋</h1>
-        <p className="text-muted text-sm" style={{ marginTop: 4 }}>
-          {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
+      {/* Hero banner con foto drone */}
+      <div style={{
+        borderRadius: 16, overflow: 'hidden', marginBottom: 20,
+        position: 'relative', minHeight: 110,
+        backgroundImage: 'url(/chiesa-drone.jpg)',
+        backgroundSize: 'cover', backgroundPosition: 'center 55%',
+      }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(135deg, rgba(7,82,50,0.82) 0%, rgba(20,50,100,0.75) 100%)',
+        }} />
+        <div style={{ position: 'relative', zIndex: 1, padding: '18px 18px 16px', color: '#fff', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img
+            src="/logo-parrocchia.png"
+            alt=""
+            style={{ width: 48, height: 48, objectFit: 'contain', opacity: 0.92, filter: 'brightness(10)' }}
+            onError={e => { e.currentTarget.style.display = 'none' }}
+          />
+          <div>
+            <h1 style={{ color: '#fff', fontSize: '1.15rem', marginBottom: 2 }}>{saluto}, {profilo?.nome || 'benvenuto'} 👋</h1>
+            <p style={{ opacity: 0.8, fontSize: '0.78rem', margin: 0 }}>
+              {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Stats (solo admin) */}
