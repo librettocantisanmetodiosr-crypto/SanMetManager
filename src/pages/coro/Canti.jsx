@@ -108,7 +108,7 @@ export default function Canti() {
   // fatto il lancio (indipendentemente dal ruolo)
   useEffect(() => {
     const poll = async () => {
-      const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).single()
+      const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).maybeSingle()
       const nuovoId = data?.canto_id ?? null
       if (nuovoId === cantoAttivoRef.current) return
       setCantoAttivo(nuovoId)
@@ -150,7 +150,7 @@ export default function Canti() {
   }
 
   const caricaCantoAttivo = async () => {
-    const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).single()
+    const { data } = await supabase.from('canto_attivo').select('canto_id').eq('id', 1).maybeSingle()
     setCantoAttivo(data?.canto_id ?? null)
   }
 
@@ -158,13 +158,14 @@ export default function Canti() {
     const stop = cantoAttivo === cantoId
     const nuovoId = stop ? null : cantoId
     lanciatoQuiRef.current = true
-    await supabase.from('canto_attivo').update({
+    // upsert: funziona anche se la riga non esiste ancora
+    await supabase.from('canto_attivo').upsert({
+      id: 1,
       canto_id: nuovoId,
       lanciato_da: profilo?.id,
       lanciato_at: new Date().toISOString(),
-    }).eq('id', 1)
+    })
     setCantoAttivo(nuovoId)
-    // Dopo 4s (più di un ciclo di polling) resetta il flag
     setTimeout(() => { lanciatoQuiRef.current = false }, 4000)
     if (stop) toast('Canto fermato', 'default')
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
