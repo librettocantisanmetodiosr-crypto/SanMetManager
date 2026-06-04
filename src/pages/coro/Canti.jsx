@@ -10,7 +10,6 @@ const MOMENTI = [
   'Ringraziamento','Uscita','Adorazione','Mariano','Altro',
 ]
 const TEMPI = ['Avvento','Natale','Quaresima','Pasqua','Tempo Ordinario','Feste Mariane','Feste dei Santi']
-const ANNI  = ['A','B','C']
 const ACCORDI = ['Do','Re','Mi','Fa','Sol','La','Si','Dom','Rem','Mim','Fam','Solm','Lam','Sim','Do7','Sol7','La7']
 const SEZIONI  = ['Ritornello','Strofa 1','Strofa 2','Strofa 3','Bridge','Intro','Coda','Fine']
 
@@ -22,9 +21,7 @@ const MOMENTO_COLOR = {
   'Mariano':'#db2777','Altro':'#6b7280',
 }
 
-const ANNO_BADGE = { A:'badge-blue', B:'badge-red', C:'badge-gold' }
-
-const vuotoForm = { titolo:'', categoria:'', tonalita:'', anno_liturgico:'', tempo_liturgico:'', testo:'' }
+const vuotoForm = { titolo:'', categoria:'', tonalita:'', tempo_liturgico:'', testo:'' }
 
 // ── Render testo con accordi e sezioni ──────────────────────────
 function TestoFormattato({ testo, fontSize = 14 }) {
@@ -93,7 +90,6 @@ export default function Canti() {
   // Filtri
   const [cerca, setCerca] = useState('')
   const [filtroMomento, setFiltroMomento] = useState('')
-  const [filtroAnni, setFiltroAnni] = useState([])
   const [filtroTempo, setFiltroTempo] = useState('')
 
   // Refs per evitare stale closure nei callback asincroni
@@ -170,7 +166,7 @@ export default function Canti() {
   }
   const apriModifica = (c) => {
     setForm({ titolo:c.titolo||'', categoria:c.categoria||'', tonalita:c.tonalita||'',
-      anno_liturgico:c.anno_liturgico||'', tempo_liturgico:c.tempo_liturgico||'', testo:c.testo||'' })
+      tempo_liturgico:c.tempo_liturgico||'', testo:c.testo||'' })
     setTipoIns(c.testo ? 'testo' : 'pdf')
     setPdfFile(null); setShowPreview(false); setModal(c)
   }
@@ -183,7 +179,6 @@ export default function Canti() {
       titolo: form.titolo.trim(),
       categoria: form.categoria || null,
       tonalita: form.tonalita || null,
-      anno_liturgico: form.anno_liturgico || null,
       tempo_liturgico: form.tempo_liturgico || null,
       testo: tipoIns === 'testo' ? (form.testo || null) : null,
       autore_id: profilo?.id,
@@ -249,16 +244,14 @@ export default function Canti() {
   const inserisciAccordo = (a) => inserisci(`[${a}]`)
 
   // Filtri
-  const toggleAnno = (a) => setFiltroAnni(prev => prev.includes(a) ? prev.filter(x=>x!==a) : [...prev, a])
-  const hasFilter = cerca || filtroMomento || filtroAnni.length > 0 || filtroTempo
+  const hasFilter = cerca || filtroMomento || filtroTempo
 
   const cantiFiltrati = canti.filter(c => {
     if (cerca && !`${c.titolo} ${c.categoria||''}`.toLowerCase().includes(cerca.toLowerCase())) return false
     if (filtroMomento && c.categoria !== filtroMomento) return false
-    if (filtroAnni.length > 0 && !filtroAnni.includes(c.anno_liturgico)) return false
     if (filtroTempo && c.tempo_liturgico !== filtroTempo) return false
     return true
-  })
+  }).sort((a, b) => a.titolo.localeCompare(b.titolo, 'it'))
 
   // Raggruppa per momento se non c'è filtro momento attivo
   const cantiRaggruppati = (() => {
@@ -285,7 +278,6 @@ export default function Canti() {
               <div style={{ fontWeight:800, fontSize:'0.92rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.titolo}</div>
               <div style={{ display:'flex', gap:4, marginTop:4, flexWrap:'wrap' }}>
                 {c.tonalita && <span className="badge badge-gray" style={{ fontSize:'0.68rem' }}>{c.tonalita}</span>}
-                {c.anno_liturgico && <span className={`badge ${ANNO_BADGE[c.anno_liturgico] || 'badge-gray'}`} style={{ fontSize:'0.68rem' }}>Anno {c.anno_liturgico}</span>}
                 {c.tempo_liturgico && <span className="badge badge-gold" style={{ fontSize:'0.68rem' }}>{c.tempo_liturgico}</span>}
                 {c.pdf_url && <span className="badge badge-blue" style={{ fontSize:'0.68rem' }}>📄 PDF</span>}
                 {c.testo && <span className="badge badge-green" style={{ fontSize:'0.68rem' }}>✍️ Testo</span>}
@@ -375,27 +367,15 @@ export default function Canti() {
             </div>
           </div>
 
-          {/* Anno liturgico + Tempo in una riga */}
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-            <span className="text-xs text-muted" style={{ fontWeight:700, whiteSpace:'nowrap' }}>Anno:</span>
-            {ANNI.map(a => (
-              <button key={a} onClick={() => toggleAnno(a)}
-                className="btn btn-sm"
-                style={{ padding:'4px 12px', background: filtroAnni.includes(a) ? 'var(--blue)' : '#fff',
-                  color: filtroAnni.includes(a) ? '#fff' : 'var(--gray-700)',
-                  border:'1.5px solid', borderColor: filtroAnni.includes(a) ? 'var(--blue)' : 'var(--gray-200)' }}>
-                {a}
-              </button>
-            ))}
-            <div style={{ marginLeft:'auto' }}>
-              <select className="form-control" style={{ fontSize:'0.78rem', padding:'6px 28px 6px 10px' }}
-                value={filtroTempo} onChange={e => setFiltroTempo(e.target.value)}>
-                <option value="">Tutti i tempi</option>
-                {TEMPI.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
+          {/* Tempo liturgico */}
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <select className="form-control" style={{ fontSize:'0.78rem', padding:'6px 28px 6px 10px', flex:1 }}
+              value={filtroTempo} onChange={e => setFiltroTempo(e.target.value)}>
+              <option value="">Tutti i tempi liturgici</option>
+              {TEMPI.map(t => <option key={t}>{t}</option>)}
+            </select>
             {hasFilter && (
-              <button className="btn btn-ghost btn-sm" onClick={() => { setCerca(''); setFiltroMomento(''); setFiltroAnni([]); setFiltroTempo('') }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setCerca(''); setFiltroMomento(''); setFiltroTempo('') }}>
                 ✕ Reset
               </button>
             )}
@@ -449,7 +429,6 @@ export default function Canti() {
                 <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
                   {vistaModal.categoria && <span className="badge badge-green">{vistaModal.categoria}</span>}
                   {vistaModal.tonalita && <span className="badge badge-blue">{vistaModal.tonalita}</span>}
-                  {vistaModal.anno_liturgico && <span className={`badge ${ANNO_BADGE[vistaModal.anno_liturgico]||'badge-gray'}`}>Anno {vistaModal.anno_liturgico}</span>}
                   {vistaModal.tempo_liturgico && <span className="badge badge-gold">{vistaModal.tempo_liturgico}</span>}
                 </div>
               </div>
@@ -559,22 +538,13 @@ export default function Canti() {
               </div>
             </div>
 
-            {/* Anno liturgico + Tempo liturgico */}
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Anno liturgico</label>
-                <select className="form-control" value={form.anno_liturgico} onChange={e => setForm(f=>({...f,anno_liturgico:e.target.value}))}>
-                  <option value="">Tutti gli anni</option>
-                  {ANNI.map(a => <option key={a}>{a}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tempo liturgico</label>
-                <select className="form-control" value={form.tempo_liturgico} onChange={e => setForm(f=>({...f,tempo_liturgico:e.target.value}))}>
-                  <option value="">Tutto l'anno</option>
-                  {TEMPI.map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
+            {/* Tempo liturgico */}
+            <div className="form-group">
+              <label className="form-label">Tempo liturgico</label>
+              <select className="form-control" value={form.tempo_liturgico} onChange={e => setForm(f=>({...f,tempo_liturgico:e.target.value}))}>
+                <option value="">Tutto l'anno</option>
+                {TEMPI.map(t => <option key={t}>{t}</option>)}
+              </select>
             </div>
 
             {/* ── Tipo TESTO: editor con toolbar ── */}
