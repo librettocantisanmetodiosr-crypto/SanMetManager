@@ -157,13 +157,17 @@ export default function Canti() {
     const stop = cantoAttivo === cantoId
     const nuovoId = stop ? null : cantoId
     lanciatoQuiRef.current = true
-    await supabase.from('canto_attivo').update({
+    const { error } = await supabase.from('canto_attivo').update({
       canto_id: nuovoId,
       lanciato_da: profilo?.id,
       lanciato_at: new Date().toISOString(),
     }).eq('id', 1)
+    if (error) {
+      lanciatoQuiRef.current = false
+      toast('Errore lancio: ' + error.message, 'error', 8000)
+      return
+    }
     setCantoAttivo(nuovoId)
-    // Blocca il poll per 7s (due cicli) così il DB fa in tempo ad aggiornarsi
     setTimeout(() => { lanciatoQuiRef.current = false }, 7000)
     if (stop) toast('Canto fermato', 'default')
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
