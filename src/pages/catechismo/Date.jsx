@@ -60,11 +60,19 @@ export default function Date() {
       const { error } = await supabase
         .from('date_catechismo')
         .upsert(sabati, { onConflict: 'data' })
-      if (error) throw error
+      if (error) {
+        if (error.message?.includes('unique') || error.message?.includes('constraint'))
+          throw new Error('Manca il constraint UNIQUE sulla colonna "data" — esegui il SQL correttivo su Supabase (vedi istruzioni)')
+        if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy'))
+          throw new Error('Permesso negato (RLS) — aggiungi la policy INSERT su date_catechismo in Supabase')
+        if (error.message?.includes('does not exist'))
+          throw new Error('Tabella date_catechismo non trovata — esegui la migrazione SQL su Supabase')
+        throw error
+      }
       toast(`✓ ${sabati.length} sabati generati per ${inizio}/${fine}`, 'success')
       carica()
     } catch (e) {
-      toast('Errore: ' + (e.message || 'controlla i permessi Supabase'), 'error')
+      toast(e.message || 'Errore sconosciuto', 'error', 8000)
     }
     setGenerando(false)
   }
@@ -79,7 +87,7 @@ export default function Date() {
       anno_inizio: parseInt(annoInizio),
       anno_fine: parseInt(annoFine),
     })
-    if (error) toast(error.message.includes('unique') ? 'Data già presente' : 'Errore nel salvataggio', 'error')
+    if (error) toast(error.message?.includes('unique') ? 'Data già presente' : ('Errore: ' + error.message), 'error', 8000)
     else { toast('Data aggiunta ✓', 'success'); carica() }
     setSaving(false)
     if (!error) setModalManuale(false)
