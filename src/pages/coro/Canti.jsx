@@ -445,16 +445,21 @@ export default function Canti() {
               </div>
             )}
 
-            {/* Controllo font (solo testo) */}
+            {/* Zoom testo + Lancia */}
             {vistaModal.testo && !vistaPdf && (
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-                <span className="text-xs text-muted">Testo:</span>
-                <input type="range" min={11} max={22} value={fontSize} onChange={e=>setFontSize(+e.target.value)}
-                  style={{ flex:1, accentColor:'var(--primary)' }}/>
-                <span className="text-xs text-muted">{fontSize}px</span>
+                <button
+                  onClick={() => setFontSize(s => Math.max(11, s - 2))}
+                  style={{ width:40, height:40, borderRadius:10, border:'1.5px solid var(--gray-200)', background:'#fff', fontSize:'1.1rem', fontWeight:900, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--gray-600)' }}
+                >A−</button>
+                <div style={{ flex:1, textAlign:'center', fontSize:'0.75rem', color:'var(--gray-400)', fontWeight:700 }}>{fontSize}px</div>
+                <button
+                  onClick={() => setFontSize(s => Math.min(32, s + 2))}
+                  style={{ width:40, height:40, borderRadius:10, border:'1.5px solid var(--gray-200)', background:'#fff', fontSize:'1.1rem', fontWeight:900, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--gray-600)' }}
+                >A+</button>
                 {isResp && (
                   <button className="btn btn-sm" onClick={() => lancia(vistaModal.id)}
-                    style={{ background: cantoAttivo===vistaModal.id ? 'var(--red)' : 'var(--primary)', color:'#fff', fontWeight:800 }}>
+                    style={{ background: cantoAttivo===vistaModal.id ? 'var(--red)' : 'var(--primary)', color:'#fff', fontWeight:800, marginLeft:4 }}>
                     {cantoAttivo===vistaModal.id ? '⏹ Stop' : '▶ Lancia'}
                   </button>
                 )}
