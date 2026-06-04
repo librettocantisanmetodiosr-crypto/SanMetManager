@@ -8,30 +8,16 @@ import {
   ResponsiveContainer, Legend
 } from 'recharts'
 
-const mesi = ['Ott','Nov','Dic','Gen','Feb','Mar','Apr','Mag']
-// Dati statistici — vengono caricati da Supabase in produzione
-const datiPresenze = [
-  { mese:'Ott', presenti:95, assenti:25 },
-  { mese:'Nov', presenti:88, assenti:32 },
-  { mese:'Dic', presenti:72, assenti:48 },
-  { mese:'Gen', presenti:90, assenti:30 },
-  { mese:'Feb', presenti:86, assenti:34 },
-  { mese:'Mar', presenti:91, assenti:29 },
-  { mese:'Apr', presenti:89, assenti:31 },
-  { mese:'Mag', presenti:83, assenti:37 },
-]
-const datiClassi = [
-  { classe:'I-A',  perc:91 }, { classe:'I-B', perc:88 },
-  { classe:'II',   perc:85 }, { classe:'III', perc:90 },
-  { classe:'IV',   perc:93 }, { classe:'V',   perc:87 },
-  { classe:'PC-A', perc:82 }, { classe:'PC-B',perc:89 },
-]
+const MESI_LABEL = { 9:'Ott', 10:'Nov', 11:'Dic', 0:'Gen', 1:'Feb', 2:'Mar', 3:'Apr', 4:'Mag' }
+const MESI_ORDER = ['Ott','Nov','Dic','Gen','Feb','Mar','Apr','Mag']
 
 export default function Dashboard() {
   const { profilo } = useAuth()
   const navigate = useNavigate()
   const [stats, setStats] = useState({ bambini: 0, classi: 0, utenti: 0 })
   const [bacheca, setBacheca] = useState([])
+  const [datiPresenze, setDatiPresenze] = useState(MESI_ORDER.map(m => ({ mese: m, presenti: 0, assenti: 0 })))
+  const [datiClassi, setDatiClassi] = useState([])
 
   const isAdmin = ['admin','parroco','segreteria'].includes(profilo?.ruolo)
 
@@ -39,6 +25,7 @@ export default function Dashboard() {
     if (!profilo) return
     caricaStats()
     caricaBacheca()
+    if (isAdmin) caricaDatiGrafici()
   }, [profilo])
 
   const caricaStats = async () => {
@@ -48,6 +35,41 @@ export default function Dashboard() {
       supabase.from('profili').select('*', { count: 'exact', head: true }).eq('attivo', true),
     ])
     setStats({ bambini: bambini || 0, classi: classi || 0, utenti: utenti || 0 })
+  }
+
+  const caricaDatiGrafici = async () => {
+    const [{ data: presenzeRaw }, { data: classiRaw }] = await Promise.all([
+      supabase.from('presenze').select('stato, date_catechismo!inner(data), bambini!inner(classe_id)'),
+      supabase.from('classi').select('id, nome').eq('attiva', true).order('nome'),
+    ])
+
+    // Grafico presenti/assenti per mese
+    const byMonth = {}
+    ;(presenzeRaw || []).forEach(p => {
+      const mNum = new Date(p.date_catechismo.data + 'T00:00:00').getMonth()
+      const label = MESI_LABEL[mNum]
+      if (!label) return
+      if (!byMonth[label]) byMonth[label] = { mese: label, presenti: 0, assenti: 0 }
+      if (p.stato === 'P') byMonth[label].presenti++
+      else byMonth[label].assenti++
+    })
+    setDatiPresenze(MESI_ORDER.map(m => byMonth[m] || { mese: m, presenti: 0, assenti: 0 }))
+
+    // Grafico % presenze per classe
+    const conteggioClasse = {}
+    ;(presenzeRaw || []).forEach(p => {
+      const cid = p.bambini?.classe_id
+      if (!cid) return
+      if (!conteggioClasse[cid]) conteggioClasse[cid] = { presenti: 0, total: 0 }
+      conteggioClasse[cid].total++
+      if (p.stato === 'P') conteggioClasse[cid].presenti++
+    })
+    setDatiClassi((classiRaw || []).map(c => ({
+      classe: c.nome,
+      perc: conteggioClasse[c.id]?.total > 0
+        ? Math.round(conteggioClasse[c.id].presenti / conteggioClasse[c.id].total * 100)
+        : 0
+    })))
   }
 
   const caricaBacheca = async () => {

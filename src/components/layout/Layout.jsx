@@ -48,7 +48,6 @@ const SEZIONI = [
 export default function Layout() {
   const { profilo, logout } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState(null)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -66,6 +65,12 @@ export default function Layout() {
   const sezioneCorrente = SEZIONI.find(s =>
     s.voci.some(v => location.pathname.startsWith(v.path))
   )
+
+  // Sezione espansa nel drawer: segue la navigazione corrente
+  const [activeSection, setActiveSection] = useState(sezioneCorrente?.key ?? null)
+  useEffect(() => {
+    if (sezioneCorrente) setActiveSection(sezioneCorrente.key)
+  }, [location.pathname])
 
   const apriSezione = (key) => {
     setActiveSection(activeSection === key ? null : key)

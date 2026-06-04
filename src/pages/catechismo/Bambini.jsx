@@ -59,10 +59,14 @@ export default function Bambini() {
     const dati = { nome: form.nome, cognome: form.cognome, data_nascita: form.data_nascita || null,
       indirizzo: form.indirizzo, telefono1: form.telefono1, telefono2: form.telefono2,
       note: form.note, classe_id: form.classe_id || null }
-    if (modal === 'nuovo') await supabase.from('bambini').insert(dati)
-    else await supabase.from('bambini').update(dati).eq('id', modal.id)
+    const { error } = modal === 'nuovo'
+      ? await supabase.from('bambini').insert(dati)
+      : await supabase.from('bambini').update(dati).eq('id', modal.id)
+    setSaving(false)
+    if (error) return toast('Errore nel salvataggio', 'error')
     toast(modal === 'nuovo' ? 'Bambino aggiunto ✓' : 'Aggiornato ✓', 'success')
-    setSaving(false); setModal(null); carica()
+    setModal(null)
+    carica()
   }
 
   const elimina = async (id) => {
@@ -117,9 +121,6 @@ export default function Bambini() {
     const okC = !filtroClasse || b.classe_id === filtroClasse
     return okN && okC
   })
-
-  const presentiTot = (bid) => statsData.filter(p => p.stato === 'P').length
-  const assentiTot  = (bid) => statsData.filter(p => p.stato === 'A').length
 
   return (
     <div style={{ padding:16 }}>

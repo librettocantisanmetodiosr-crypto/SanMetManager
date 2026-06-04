@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
         if (error.code === 'PGRST116') {
           const { data: newProfilo } = await supabase
             .from('profili')
-            .insert({ id: userId, username: 'utente', ruolo: 'admin' })
+            .insert({ id: userId, username: 'utente', ruolo: 'catechista' })
             .select()
             .single()
           setProfilo(newProfilo)

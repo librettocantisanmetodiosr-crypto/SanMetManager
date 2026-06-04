@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
@@ -18,18 +18,22 @@ export default function Canti() {
   const [form, setForm] = useState({ titolo: '', categoria: '', tonalita: '', testo: '', accordi: '' })
   const [saving, setSaving] = useState(false)
 
+  // Refs per evitare stale closure nel listener realtime
+  const cantiRef = useRef([])
+  const isResponsabileRef = useRef(false)
+  useEffect(() => { cantiRef.current = canti }, [canti])
+  useEffect(() => { isResponsabileRef.current = isResponsabile }, [isResponsabile])
+
   useEffect(() => {
     caricaCanti()
     caricaCantoAttivo()
 
-    // Realtime: ascolta cambi canto attivo
     const ch = supabase
       .channel('canto_attivo')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'canto_attivo' }, payload => {
         setCantoAttivo(payload.new.canto_id)
-        if (payload.new.canto_id && !isResponsabile) {
-          // Mostra automaticamente il canto lanciato
-          const canto = canti.find(c => c.id === payload.new.canto_id)
+        if (payload.new.canto_id && !isResponsabileRef.current) {
+          const canto = cantiRef.current.find(c => c.id === payload.new.canto_id)
           if (canto) setVistaModal(canto)
         }
       })
