@@ -444,6 +444,13 @@ grant execute on function genera_date_catechismo(int, int) to authenticated;
 grant execute on function stats_presenze_classe(uuid) to authenticated;
 
 -- ═══════════════════════════════════════════════════
+-- MIGRAZIONE: nuove colonne canti (anno e tempo liturgico)
+-- Eseguire in Supabase → SQL Editor se non già presenti
+-- ═══════════════════════════════════════════════════
+alter table public.canti add column if not exists anno_liturgico text;
+alter table public.canti add column if not exists tempo_liturgico text;
+
+-- ═══════════════════════════════════════════════════
 -- DATI INIZIALI
 -- ═══════════════════════════════════════════════════
 
