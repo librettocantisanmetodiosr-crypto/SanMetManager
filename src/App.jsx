@@ -7,6 +7,7 @@ import Layout from './components/layout/Layout'
 
 // Pagine
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 
 // Catechismo
@@ -42,7 +43,11 @@ function ProtectedRoute({ children, ruoli }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, recoveryMode } = useAuth()
+
+  // Se l'utente ha cliccato un link di reset password, mostra subito la pagina
+  if (recoveryMode) return <ResetPassword />
+
   return (
     <Routes>
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />

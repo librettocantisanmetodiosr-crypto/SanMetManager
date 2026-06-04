@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profilo, setProfilo] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recoveryMode, setRecoveryMode] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -18,12 +19,19 @@ export function AuthProvider({ children }) {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true)
+        setUser(session?.user ?? null)
+        setLoading(false)
+        return
+      }
       setUser(session?.user ?? null)
       if (session?.user) {
         caricaProfilo(session.user.id)
       } else {
         setProfilo(null)
+        setRecoveryMode(false)
         setLoading(false)
       }
     })
@@ -70,8 +78,21 @@ export function AuthProvider({ children }) {
     setProfilo(null)
   }
 
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://san-met-manager-dda9.vercel.app',
+    })
+    return { error }
+  }
+
+  const aggiornaPassword = async (nuovaPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: nuovaPassword })
+    if (!error) setRecoveryMode(false)
+    return { error }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profilo, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, profilo, loading, recoveryMode, login, logout, resetPassword, aggiornaPassword }}>
       {children}
     </AuthContext.Provider>
   )

@@ -24,7 +24,7 @@ const vuotoNuovo = { email: '', password: '', nome: '', cognome: '', username: '
 const vuotoModifica = { username: '', nome: '', cognome: '', telefono: '', ruolo: 'catechista' }
 
 export default function Utenti() {
-  const { profilo } = useAuth()
+  const { profilo, resetPassword } = useAuth()
   const { toast, ToastContainer } = useToast()
 
   const [utenti, setUtenti] = useState([])
@@ -40,6 +40,9 @@ export default function Utenti() {
   const [cerca, setCerca] = useState('')
   const [mostraPassword, setMostraPassword] = useState(false)
   const [modalCredenziali, setModalCredenziali] = useState(null) // { nome, cognome, email, password, ruolo }
+  const [modalReset, setModalReset] = useState(null)            // utente da resettare
+  const [emailReset, setEmailReset] = useState('')
+  const [inviandoReset, setInviandoReset] = useState(false)
 
   const isAdmin = ['admin', 'parroco'].includes(profilo?.ruolo)
 
@@ -161,6 +164,20 @@ export default function Utenti() {
     carica()
   }
 
+  const apriReset = (u) => {
+    setEmailReset('')
+    setModalReset(u)
+  }
+
+  const inviaReset = async () => {
+    if (!emailReset.trim() || !emailReset.includes('@')) return toast('Inserisci un\'email valida', 'error')
+    setInviandoReset(true)
+    const { error } = await resetPassword(emailReset.trim())
+    setInviandoReset(false)
+    if (error) toast('Errore: ' + error.message, 'error')
+    else { toast(`Email di reset inviata a ${emailReset.trim()} ✓`, 'success'); setModalReset(null) }
+  }
+
   const badgeRuolo = (ruolo) => {
     const r = RUOLI.find(x => x.value === ruolo)
     return <span className={`badge ${r?.badge || 'badge-gray'}`}>{r?.label || ruolo}</span>
@@ -218,6 +235,7 @@ export default function Utenti() {
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {badgeRuolo(u.ruolo)}
+                    <button className="btn btn-outline btn-sm btn-icon" title="Reimposta password" onClick={() => apriReset(u)}>🔑</button>
                     <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
                       setFormModifica({ username: u.username || '', nome: u.nome || '', cognome: u.cognome || '', telefono: u.telefono || '', ruolo: u.ruolo })
                       setModalModifica(u)
@@ -365,6 +383,40 @@ export default function Utenti() {
                 }}
               >✉️ Email</button>
               <button className="btn btn-primary btn-block" onClick={() => setModalCredenziali(null)}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: RESET PASSWORD ───────────────────────────── */}
+      {modalReset && (
+        <div className="modal-overlay" onClick={() => setModalReset(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">🔑 Reimposta password</div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--gray-600)', marginBottom: 16 }}>
+              Verrà inviata un'email a <strong>{modalReset.nome} {modalReset.cognome}</strong> con un link per impostare una nuova password.
+            </p>
+            <div className="form-group">
+              <label className="form-label">Email dell'utente</label>
+              <input
+                type="email"
+                className="form-control"
+                placeholder="email@esempio.it"
+                value={emailReset}
+                onChange={e => setEmailReset(e.target.value)}
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && inviaReset()}
+              />
+            </div>
+            <div style={{ background: 'var(--primary-bg)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.78rem', color: 'var(--primary)' }}>
+              L'utente riceverà un link valido 1 ora. Cliccandolo aprirà l'app e potrà scegliere la nuova password.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-outline btn-block" onClick={() => setModalReset(null)}>Annulla</button>
+              <button className="btn btn-primary btn-block" onClick={inviaReset} disabled={inviandoReset}>
+                {inviandoReset ? 'Invio...' : '✉️ Invia link reset'}
+              </button>
             </div>
           </div>
         </div>
