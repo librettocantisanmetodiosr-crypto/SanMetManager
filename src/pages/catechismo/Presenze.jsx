@@ -12,7 +12,6 @@ export default function Presenze() {
   const [date, setDate] = useState([])
   const [bambini, setBambini] = useState([])
   const [presenze, setPresenze] = useState({}) // { bambino_id: 'P'|'A' }
-  const [noteGiornata, setNoteGiornata] = useState('')
 
   const [classeId, setClasseId] = useState('')
   const [dataId, setDataId] = useState('')
@@ -101,18 +100,10 @@ export default function Presenze() {
       .eq('data_id', dataId)
       .in('bambino_id', (bamb || []).map(b => b.id))
 
-    const { data: nota } = await supabase
-      .from('note_giornata')
-      .select('testo')
-      .eq('classe_id', classeId)
-      .eq('data_id', dataId)
-      .single()
-
     const map = {}
     pres?.forEach(p => { map[p.bambino_id] = p.stato })
     setBambini(bamb || [])
     setPresenze(map)
-    setNoteGiornata(nota?.testo || '')
     setLoading(false)
   }
 
@@ -136,15 +127,6 @@ export default function Presenze() {
       stato: presenze[b.id] || 'A'
     }))
     const { error } = await supabase.from('presenze').upsert(rows, { onConflict: 'bambino_id,data_id' })
-
-    // Salva note giornata
-    if (noteGiornata.trim()) {
-      await supabase.from('note_giornata').upsert({
-        classe_id: classeId, data_id: dataId,
-        catechista_id: profilo.id, testo: noteGiornata
-      }, { onConflict: 'classe_id,data_id' })
-    }
-
     setSaving(false)
     if (error) toast('Errore nel salvataggio', 'error')
     else toast('Presenze salvate ✓', 'success')
@@ -290,19 +272,6 @@ export default function Presenze() {
         </div>
       )}
 
-      {/* Note giornata */}
-      {bambini.length > 0 && (
-        <div className="form-group" style={{ marginBottom: 16 }}>
-          <label className="form-label">📝 Note attività della giornata</label>
-          <textarea
-            className="form-control"
-            placeholder="Es: Abbiamo parlato dei Sacramenti, lavorato sul foglio colorato…"
-            value={noteGiornata}
-            onChange={e => setNoteGiornata(e.target.value)}
-            rows={3}
-          />
-        </div>
-      )}
 
       {/* Salva */}
       {bambini.length > 0 && (
