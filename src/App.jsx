@@ -10,6 +10,9 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 
+// Admin
+import AdminAttivita from './pages/admin/Attivita'
+
 // Catechismo
 import CatClassi from './pages/catechismo/Classi'
 import CatBambini from './pages/catechismo/Bambini'
@@ -65,6 +68,7 @@ function AppRoutes() {
         {/* Admin — Utenti (vecchio path reindirizzato) */}
         <Route path="catechismo/utenti"    element={<Navigate to="/admin/utenti" replace />} />
         <Route path="admin/utenti"         element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatUtenti /></ProtectedRoute>} />
+        <Route path="admin/attivita"       element={<ProtectedRoute ruoli={['admin','parroco']}><AdminAttivita /></ProtectedRoute>} />
         {/* Comitato */}
         <Route path="comitato/calendario" element={<ProtectedRoute ruoli={['admin','parroco','comitato']}><ComCalendario /></ProtectedRoute>} />
         <Route path="comitato/lettere"    element={<ProtectedRoute ruoli={['admin','parroco','comitato']}><ComLettere /></ProtectedRoute>} />

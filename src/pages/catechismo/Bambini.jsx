@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
+import { logAzione } from '../../lib/logger'
 
 const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'' }
 
@@ -68,6 +69,7 @@ export default function Bambini() {
       error.message?.includes('does not exist') ? 'Tabella bambini non trovata — esegui la migrazione SQL' :
       'Errore: ' + error.message, 'error', 8000
     )
+    logAzione(modal === 'nuovo' ? 'NUOVO_BAMBINO' : 'MODIFICA_BAMBINO', `${form.cognome} ${form.nome}`)
     toast(modal === 'nuovo' ? 'Bambino aggiunto ✓' : 'Aggiornato ✓', 'success')
     setModal(null)
     carica()
@@ -75,7 +77,9 @@ export default function Bambini() {
 
   const elimina = async (id) => {
     if (!window.confirm('Eliminare questo bambino?')) return
+    const b = bambini.find(x => x.id === id)
     await supabase.from('bambini').update({ attivo: false }).eq('id', id)
+    logAzione('ELIMINA_BAMBINO', b ? `${b.cognome} ${b.nome}` : id)
     toast('Eliminato', 'success'); carica()
   }
 

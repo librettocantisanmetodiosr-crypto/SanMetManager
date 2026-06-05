@@ -70,10 +70,19 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (!error) {
+      // Log asincrono — non blocca il login
+      setTimeout(async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) await supabase.from('log_attivita').insert({ utente_id: user.id, azione: 'LOGIN' }).catch(() => {})
+      }, 500)
+    }
     return { error }
   }
 
   const logout = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) await supabase.from('log_attivita').insert({ utente_id: user.id, azione: 'LOGOUT' }).catch(() => {})
     await supabase.auth.signOut()
     setProfilo(null)
   }

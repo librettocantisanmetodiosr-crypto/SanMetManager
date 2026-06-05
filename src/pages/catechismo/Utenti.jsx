@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 import { inviaBenvenuto } from '../../lib/emailService'
 import { emailConfigured } from '../../lib/emailConfig'
+import { logAzione } from '../../lib/logger'
 
 const RUOLI = [
   { value: 'responsabile',     label: 'Responsabile',  badge: 'badge-red',   desc: 'Accesso completo + può avere ruoli multipli' },
@@ -124,6 +125,7 @@ export default function Utenti() {
       setModalNuovo(false)
       setFormNuovo(vuotoNuovo)
       carica()
+      logAzione('NUOVO_UTENTE', `${cognome} ${nome} (${ruolo})`)
 
       // Mostra credenziali e invia email se configurata
       const nuovoUtente = { nome, cognome, email: email.trim(), password, ruolo }
@@ -156,6 +158,7 @@ export default function Utenti() {
       if (error.code === '42501') toast('Permesso negato: aggiungi la policy di update per admin (vedi schema.sql)', 'error')
       else toast('Errore nel salvataggio', 'error')
     } else {
+      logAzione('MODIFICA_UTENTE', `${formModifica.cognome} ${formModifica.nome}`)
       toast('Utente aggiornato ✓', 'success')
       setModalModifica(null)
       carica()
@@ -165,7 +168,9 @@ export default function Utenti() {
 
   const disattiva = async (uid) => {
     if (!window.confirm('Disattivare questo utente? Non potrà più accedere.')) return
+    const u = utenti.find(x => x.id === uid)
     await supabase.from('profili').update({ attivo: false }).eq('id', uid)
+    logAzione('DISATTIVA_UTENTE', u ? `${u.cognome} ${u.nome}` : uid)
     toast('Utente disattivato', 'success')
     carica()
   }

@@ -46,7 +46,8 @@ const SEZIONI = [
     key: 'admin', label: 'Amministrazione', icon: '⚙️', color: 'var(--gray-700)',
     ruoli: ['admin','parroco','segreteria','responsabile'],
     voci: [
-      { path: '/admin/utenti', label: 'Utenti', icon: '👤' },
+      { path: '/admin/utenti',    label: 'Utenti',    icon: '👤' },
+      { path: '/admin/attivita',  label: 'Attività',  icon: '📋', ruoli: ['admin','parroco'] },
     ]
   },
 ]
