@@ -85,10 +85,12 @@ export default function Utenti() {
     }
     setCreando(true)
     try {
-      // Client temporaneo: la signUp non tocca la sessione admin corrente
+      // Client temporaneo con storage no-op: signUp non tocca né legge la sessione admin
+      const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
       const tempClient = createClient(
         process.env.REACT_APP_SUPABASE_URL,
-        process.env.REACT_APP_SUPABASE_ANON_KEY
+        process.env.REACT_APP_SUPABASE_ANON_KEY,
+        { auth: { storage: noopStorage, persistSession: false, autoRefreshToken: false } }
       )
       const { data: authData, error: authErr } = await tempClient.auth.signUp({
         email: email.trim(),
