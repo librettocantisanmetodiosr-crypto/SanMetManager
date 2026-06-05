@@ -164,7 +164,22 @@ export default function Bambini() {
                       {b.data_nascita ? ' · n. ' + new Date(b.data_nascita).toLocaleDateString('it-IT') : ''}
                     </div>
                     {b.note && <div className="text-xs" style={{ color:'var(--red)', marginTop:2 }}>⚠️ {b.note}</div>}
-                    {b.telefono1 && <div className="text-xs text-muted">📞 {b.telefono1}</div>}
+                    {(b.telefono1 || b.telefono2) && (
+                      <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
+                        {b.telefono1 && (
+                          <a href={`tel:${b.telefono1}`}
+                            style={{ display:'inline-flex', alignItems:'center', gap:5, background:'var(--primary-bg)', color:'var(--primary)', borderRadius:8, padding:'5px 10px', fontSize:'0.82rem', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap' }}
+                            onClick={e => e.stopPropagation()}
+                          >📞 {b.telefono1}</a>
+                        )}
+                        {b.telefono2 && (
+                          <a href={`tel:${b.telefono2}`}
+                            style={{ display:'inline-flex', alignItems:'center', gap:5, background:'var(--blue-bg)', color:'var(--blue)', borderRadius:8, padding:'5px 10px', fontSize:'0.82rem', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap' }}
+                            onClick={e => e.stopPropagation()}
+                          >📞 {b.telefono2}</a>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                     <button className="btn btn-outline btn-sm" onClick={() => apriStats(b)}>📊</button>
