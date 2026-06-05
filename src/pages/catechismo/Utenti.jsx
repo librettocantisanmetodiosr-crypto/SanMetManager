@@ -45,6 +45,8 @@ export default function Utenti() {
   const [nuovaPassword, setNuovaPassword] = useState('')
   const [mostraPasswordReset, setMostraPasswordReset] = useState(false)
   const [inviandoReset, setInviandoReset] = useState(false)
+  const [modalCondivisione, setModalCondivisione] = useState(null)
+  const [pwdCondivisione, setPwdCondivisione] = useState('')
 
   const isAdmin = ['admin', 'parroco', 'responsabile'].includes(profilo?.ruolo)
 
@@ -250,6 +252,7 @@ export default function Utenti() {
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {badgeRuolo(u.ruolo)}
+                    <button className="btn btn-outline btn-sm btn-icon" title="Condividi accesso" onClick={() => { setModalCondivisione(u); setPwdCondivisione('') }}>📤</button>
                     <button className="btn btn-outline btn-sm btn-icon" title="Reimposta password" onClick={() => apriReset(u)}>🔑</button>
                     <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
                       setFormModifica({ username: u.username || '', nome: u.nome || '', cognome: u.cognome || '', telefono: u.telefono || '', ruolo: u.ruolo, ruoli_extra: u.ruoli_extra || [] })
@@ -473,6 +476,65 @@ export default function Utenti() {
           </div>
         </div>
       )}
+
+      {/* ── Modal: CONDIVIDI ACCESSO ────────────────────────── */}
+      {modalCondivisione && (() => {
+        const u = modalCondivisione
+        const link = 'https://san-met-manager-dda9.vercel.app'
+        const testo = pwdCondivisione
+          ? `Ciao ${u.nome}! 👋\n\nEcco i tuoi dati di accesso a SanMetManager:\n\n🔗 Link: ${link}\n👤 Username: ${u.username}\n🔑 Password: ${pwdCondivisione}\n\nParrocchia San Metodio – Siracusa`
+          : `Ciao ${u.nome}! 👋\n\nEcco i tuoi dati di accesso a SanMetManager:\n\n🔗 Link: ${link}\n👤 Username: ${u.username}\n\nParrocchia San Metodio – Siracusa`
+        return (
+          <div className="modal-overlay" onClick={() => setModalCondivisione(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-handle" />
+              <div className="modal-title">📤 Condividi accesso</div>
+
+              <div style={{ background: 'var(--primary-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: 8 }}>{u.nome} {u.cognome}</div>
+                <div className="text-sm" style={{ marginBottom: 4 }}>
+                  <span style={{ color: 'var(--gray-500)' }}>Username: </span>
+                  <strong style={{ fontFamily: 'monospace' }}>@{u.username}</strong>
+                </div>
+                <div className="text-sm">
+                  <span style={{ color: 'var(--gray-500)' }}>Link app: </span>
+                  <strong style={{ fontSize: '0.82rem' }}>{link}</strong>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password (inserisci quella che hai impostato)</label>
+                <input
+                  className="form-control"
+                  type="text"
+                  placeholder="Lascia vuoto per non includerla"
+                  value={pwdCondivisione}
+                  onChange={e => setPwdCondivisione(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+              </div>
+
+              <div style={{ background: 'var(--gray-50)', borderRadius: 8, padding: '10px 12px', marginBottom: 16, fontSize: '0.8rem', color: 'var(--gray-600)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                {testo}
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn btn-outline btn-block"
+                  onClick={() => { navigator.clipboard?.writeText(testo); toast('Copiato negli appunti ✓', 'success') }}
+                >📋 Copia</button>
+                <button
+                  className="btn btn-outline btn-block"
+                  style={{ background: '#25D366', color: '#fff', borderColor: '#25D366' }}
+                  onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(testo)}`)}
+                >💬 WhatsApp</button>
+                <button className="btn btn-primary btn-block" onClick={() => setModalCondivisione(null)}>OK</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Modal: MODIFICA UTENTE ──────────────────────────── */}
       {modalModifica && (
