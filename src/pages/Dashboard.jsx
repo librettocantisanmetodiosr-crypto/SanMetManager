@@ -48,6 +48,7 @@ export default function Dashboard() {
     hasComitato    && { icon: '📄', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
     hasCoro        && { icon: '🎵', label: 'Canti', path: '/coro/canti', color: 'var(--gold)' },
     hasNeo         && { icon: '🚪', label: 'Stanze', path: '/neo/stanze', color: 'var(--red)' },
+    isAdmin        && { icon: '👤', label: 'Utenti', path: '/admin/utenti', color: 'var(--gray-700)' },
   ].filter(Boolean)
 
   return (
