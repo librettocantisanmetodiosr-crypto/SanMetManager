@@ -17,6 +17,7 @@ export default function Presenze() {
   const [dataId, setDataId] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [savingIds, setSavingIds] = useState(new Set())
   const [modalDataExtra, setModalDataExtra] = useState(false)
   const [formDataExtra, setFormDataExtra] = useState({ data: new Date().toISOString().split('T')[0], descrizione: '' })
   const [savingData, setSavingData] = useState(false)
@@ -112,29 +113,38 @@ export default function Presenze() {
     setLoading(false)
   }
 
-  const togglePresenza = (bambinoId, stato) => {
-    setPresenze(p => ({ ...p, [bambinoId]: p[bambinoId] === stato ? '' : stato }))
+  const togglePresenza = async (bambinoId, stato) => {
+    const nuovoStato = presenze[bambinoId] === stato ? '' : stato
+    setPresenze(p => ({ ...p, [bambinoId]: nuovoStato }))
+    if (!dataId) return
+    setSavingIds(prev => new Set(prev).add(bambinoId))
+    if (nuovoStato) {
+      await supabase.from('presenze').upsert(
+        { bambino_id: bambinoId, data_id: dataId, stato: nuovoStato },
+        { onConflict: 'bambino_id,data_id' }
+      )
+    } else {
+      await supabase.from('presenze').delete()
+        .eq('bambino_id', bambinoId).eq('data_id', dataId)
+    }
+    setSavingIds(prev => { const s = new Set(prev); s.delete(bambinoId); return s })
   }
 
-  const segnatutti = (stato) => {
-    const map = {}
-    bambini.forEach(b => { map[b.id] = stato })
-    setPresenze(map)
-  }
-
-  const salva = async () => {
-    if (!classeId || !dataId) return
+  const salvaMap = async (map) => {
+    if (!classeId || !dataId || bambini.length === 0) return
     setSaving(true)
-    // Salva presenze (upsert)
-    const rows = bambini.map(b => ({
-      bambino_id: b.id,
-      data_id: dataId,
-      stato: presenze[b.id] || 'A'
-    }))
+    const rows = bambini.map(b => ({ bambino_id: b.id, data_id: dataId, stato: map[b.id] || 'A' }))
     const { error } = await supabase.from('presenze').upsert(rows, { onConflict: 'bambino_id,data_id' })
     setSaving(false)
     if (error) toast('Errore nel salvataggio', 'error')
     else toast('Presenze salvate ✓', 'success')
+  }
+
+  const segnatutti = async (stato) => {
+    const map = {}
+    bambini.forEach(b => { map[b.id] = stato })
+    setPresenze(map)
+    await salvaMap(map)
   }
 
   const presenti = bambini.filter(b => presenze[b.id] === 'P').length
@@ -252,24 +262,26 @@ export default function Presenze() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => togglePresenza(b.id, 'P')}
+                    disabled={savingIds.has(b.id)}
                     style={{
                       width: 40, height: 40, borderRadius: '50%', border: 'none',
-                      fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer',
+                      fontWeight: 800, fontSize: savingIds.has(b.id) ? '0.6rem' : '0.9rem', cursor: 'pointer',
                       background: presenze[b.id] === 'P' ? 'var(--primary)' : 'var(--gray-100)',
                       color: presenze[b.id] === 'P' ? '#fff' : 'var(--gray-500)',
-                      transition: 'all 0.15s'
+                      transition: 'all 0.15s', opacity: savingIds.has(b.id) ? 0.7 : 1
                     }}
-                  >P</button>
+                  >{savingIds.has(b.id) ? '…' : 'P'}</button>
                   <button
                     onClick={() => togglePresenza(b.id, 'A')}
+                    disabled={savingIds.has(b.id)}
                     style={{
                       width: 40, height: 40, borderRadius: '50%', border: 'none',
-                      fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer',
+                      fontWeight: 800, fontSize: savingIds.has(b.id) ? '0.6rem' : '0.9rem', cursor: 'pointer',
                       background: presenze[b.id] === 'A' ? 'var(--red)' : 'var(--gray-100)',
                       color: presenze[b.id] === 'A' ? '#fff' : 'var(--gray-500)',
-                      transition: 'all 0.15s'
+                      transition: 'all 0.15s', opacity: savingIds.has(b.id) ? 0.7 : 1
                     }}
-                  >A</button>
+                  >{savingIds.has(b.id) ? '…' : 'A'}</button>
                 </div>
               </div>
             </div>
@@ -278,15 +290,11 @@ export default function Presenze() {
       )}
 
 
-      {/* Salva */}
-      {bambini.length > 0 && (
-        <button
-          className="btn btn-primary btn-lg btn-block"
-          onClick={salva}
-          disabled={saving}
-        >
-          {saving ? <><div className="spinner" style={{ borderTopColor: '#fff' }} />Salvataggio…</> : '💾 Salva presenze'}
-        </button>
+      {/* Salva in batch (solo per "tutti presenti/assenti") */}
+      {saving && (
+        <div style={{ textAlign: 'center', color: 'var(--gray-500)', fontSize: '0.85rem', padding: '10px 0' }}>
+          <div className="spinner" style={{ display: 'inline-block', marginRight: 8 }} />Salvataggio…
+        </div>
       )}
     </div>
   )
