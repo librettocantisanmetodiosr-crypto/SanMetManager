@@ -163,6 +163,7 @@ export default function Bambini() {
                       {b.classi?.nome || 'Nessuna classe'}
                       {b.data_nascita ? ' · n. ' + new Date(b.data_nascita).toLocaleDateString('it-IT') : ''}
                     </div>
+                    {b.indirizzo && <div className="text-xs text-muted" style={{ marginTop:2 }}>📍 {b.indirizzo}</div>}
                     {b.note && <div className="text-xs" style={{ color:'var(--red)', marginTop:2 }}>⚠️ {b.note}</div>}
                     {(b.telefono1 || b.telefono2) && (
                       <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
@@ -183,10 +184,10 @@ export default function Bambini() {
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                     <button className="btn btn-outline btn-sm" onClick={() => apriStats(b)}>📊</button>
-                    <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
+                    {isAdmin && <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
                       setForm({ nome:b.nome, cognome:b.cognome, data_nascita:b.data_nascita||'', indirizzo:b.indirizzo||'', telefono1:b.telefono1||'', telefono2:b.telefono2||'', note:b.note||'', classe_id:b.classe_id||'' })
                       setModal(b)
-                    }}>✏️</button>
+                    }}>✏️</button>}
                     {isAdmin && <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(b.id)}>🗑</button>}
                   </div>
                 </div>
