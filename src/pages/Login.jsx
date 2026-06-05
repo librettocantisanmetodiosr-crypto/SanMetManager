@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ identifier: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errore, setErrore] = useState('')
 
@@ -13,9 +14,23 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setErrore('')
-    const { error } = await login(form.email, form.password)
+
+    let email = form.identifier.trim()
+
+    // Se non contiene @, è uno username — cerca l'email associata
+    if (!email.includes('@')) {
+      const { data, error: rpcErr } = await supabase.rpc('get_email_by_username', { p_username: email.toLowerCase() })
+      if (rpcErr || !data) {
+        setErrore('Username non trovato. Prova con la tua email.')
+        setLoading(false)
+        return
+      }
+      email = data
+    }
+
+    const { error } = await login(email, form.password)
     if (error) {
-      setErrore('Email o password non corretti.')
+      setErrore('Credenziali non corrette.')
       setLoading(false)
     } else {
       navigate('/')
@@ -69,15 +84,16 @@ export default function Login() {
           <h2 style={{ marginBottom: 20, color: 'var(--gray-900)' }}>Accedi</h2>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Email</label>
+              <label className="form-label">Email o Username</label>
               <input
-                type="email"
+                type="text"
                 className="form-control"
-                placeholder="nome@esempio.it"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="email@esempio.it oppure nome.utente"
+                value={form.identifier}
+                onChange={e => setForm(f => ({ ...f, identifier: e.target.value }))}
                 required
                 autoCapitalize="none"
+                autoCorrect="off"
               />
             </div>
             <div className="form-group">
