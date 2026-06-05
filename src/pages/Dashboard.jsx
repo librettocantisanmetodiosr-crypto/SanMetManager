@@ -2,30 +2,23 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import {
-  LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend
-} from 'recharts'
-
-const MESI_LABEL = { 9:'Ott', 10:'Nov', 11:'Dic', 0:'Gen', 1:'Feb', 2:'Mar', 3:'Apr', 4:'Mag' }
-const MESI_ORDER = ['Ott','Nov','Dic','Gen','Feb','Mar','Apr','Mag']
 
 export default function Dashboard() {
-  const { profilo } = useAuth()
+  const { profilo, tuttiRuoli } = useAuth()
   const navigate = useNavigate()
-  const [stats, setStats] = useState({ bambini: 0, classi: 0, utenti: 0 })
+  const [stats, setStats] = useState(null)
   const [bacheca, setBacheca] = useState([])
-  const [datiPresenze, setDatiPresenze] = useState(MESI_ORDER.map(m => ({ mese: m, presenti: 0, assenti: 0 })))
-  const [datiClassi, setDatiClassi] = useState([])
 
-  const isAdmin = ['admin','parroco','segreteria'].includes(profilo?.ruolo)
+  const isAdmin = ['admin','parroco','segreteria'].some(r => tuttiRuoli.includes(r))
+  const hasCatechismo = ['admin','parroco','segreteria','catechista','responsabile'].some(r => tuttiRuoli.includes(r))
+  const hasComitato = ['admin','parroco','comitato'].some(r => tuttiRuoli.includes(r))
+  const hasCoro = ['admin','parroco','responsabile_coro','corista'].some(r => tuttiRuoli.includes(r))
+  const hasNeo = ['admin','parroco','neocatecumenale','responsabile_neo'].some(r => tuttiRuoli.includes(r))
 
   useEffect(() => {
     if (!profilo) return
-    caricaStats()
     caricaBacheca()
-    if (isAdmin) caricaDatiGrafici()
+    if (isAdmin) caricaStats()
   }, [profilo])
 
   const caricaStats = async () => {
@@ -37,164 +30,94 @@ export default function Dashboard() {
     setStats({ bambini: bambini || 0, classi: classi || 0, utenti: utenti || 0 })
   }
 
-  const caricaDatiGrafici = async () => {
-    const [{ data: presenzeRaw }, { data: classiRaw }] = await Promise.all([
-      supabase.from('presenze').select('stato, date_catechismo!inner(data), bambini!inner(classe_id)'),
-      supabase.from('classi').select('id, nome').eq('attiva', true).order('nome'),
-    ])
-
-    // Grafico presenti/assenti per mese
-    const byMonth = {}
-    ;(presenzeRaw || []).forEach(p => {
-      const mNum = new Date(p.date_catechismo.data + 'T00:00:00').getMonth()
-      const label = MESI_LABEL[mNum]
-      if (!label) return
-      if (!byMonth[label]) byMonth[label] = { mese: label, presenti: 0, assenti: 0 }
-      if (p.stato === 'P') byMonth[label].presenti++
-      else byMonth[label].assenti++
-    })
-    setDatiPresenze(MESI_ORDER.map(m => byMonth[m] || { mese: m, presenti: 0, assenti: 0 }))
-
-    // Grafico % presenze per classe
-    const conteggioClasse = {}
-    ;(presenzeRaw || []).forEach(p => {
-      const cid = p.bambini?.classe_id
-      if (!cid) return
-      if (!conteggioClasse[cid]) conteggioClasse[cid] = { presenti: 0, total: 0 }
-      conteggioClasse[cid].total++
-      if (p.stato === 'P') conteggioClasse[cid].presenti++
-    })
-    setDatiClassi((classiRaw || []).map(c => ({
-      classe: c.nome,
-      perc: conteggioClasse[c.id]?.total > 0
-        ? Math.round(conteggioClasse[c.id].presenti / conteggioClasse[c.id].total * 100)
-        : 0
-    })))
-  }
-
   const caricaBacheca = async () => {
     const { data } = await supabase
-      .from('bacheca')
-      .select('*')
-      .eq('attivo', true)
-      .order('created_at', { ascending: false })
-      .limit(3)
+      .from('bacheca').select('id, titolo, testo, destinatari, created_at')
+      .eq('attivo', true).order('created_at', { ascending: false }).limit(4)
     setBacheca(data || [])
   }
 
   const ora = new Date().getHours()
   const saluto = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'
 
+  const shortcuts = [
+    hasCatechismo && { icon: '✅', label: 'Presenze', path: '/catechismo/presenze', color: 'var(--primary)' },
+    hasCatechismo && { icon: '👦', label: 'Bambini', path: '/catechismo/bambini', color: 'var(--primary)' },
+    isAdmin        && { icon: '🏫', label: 'Classi', path: '/catechismo/classi', color: 'var(--primary)' },
+    hasComitato    && { icon: '🗓️', label: 'Calendario', path: '/comitato/calendario', color: 'var(--blue)' },
+    hasComitato    && { icon: '📄', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
+    hasCoro        && { icon: '🎵', label: 'Canti', path: '/coro/canti', color: 'var(--gold)' },
+    hasNeo         && { icon: '🚪', label: 'Stanze', path: '/neo/stanze', color: 'var(--red)' },
+  ].filter(Boolean)
+
   return (
     <div style={{ padding: 16 }}>
 
-      {/* Hero banner con foto drone */}
+      {/* Greeting */}
       <div style={{
-        borderRadius: 16, overflow: 'hidden', marginBottom: 20,
-        position: 'relative', minHeight: 110,
-        backgroundImage: 'url(/chiesa-drone.jpg)',
-        backgroundSize: 'cover', backgroundPosition: 'center 55%',
+        borderRadius: 14, marginBottom: 20, padding: '18px 20px',
+        background: 'linear-gradient(135deg, var(--primary) 0%, var(--blue) 100%)',
+        color: '#fff',
       }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(135deg, rgba(7,82,50,0.82) 0%, rgba(20,50,100,0.75) 100%)',
-        }} />
-        <div style={{ position: 'relative', zIndex: 1, padding: '18px 18px 16px', color: '#fff', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img
-            src="/logo-parrocchia.png"
-            alt=""
-            style={{ width: 48, height: 48, objectFit: 'contain', opacity: 0.92, filter: 'brightness(10)' }}
-            onError={e => { e.currentTarget.style.display = 'none' }}
-          />
-          <div>
-            <h1 style={{ color: '#fff', fontSize: '1.15rem', marginBottom: 2 }}>{saluto}, {profilo?.nome || 'benvenuto'} 👋</h1>
-            <p style={{ opacity: 0.8, fontSize: '0.78rem', margin: 0 }}>
-              {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
+        <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>
+          {saluto}, {profilo?.nome || 'benvenuto'}
+        </div>
+        <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: 3 }}>
+          {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
       </div>
 
-      {/* Stats (solo admin) */}
-      {isAdmin && (
+      {/* Stats admin */}
+      {isAdmin && stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
-          <StatCard num={stats.bambini} label="Bambini" icon="👦" color="var(--primary)" bg="var(--primary-bg)" />
-          <StatCard num={stats.classi}  label="Classi"  icon="🏫" color="var(--blue)"    bg="var(--blue-bg)" />
-          <StatCard num={stats.utenti}  label="Utenti"  icon="👤" color="var(--red)"     bg="var(--red-bg)" />
+          <StatCard num={stats.bambini} label="Bambini" color="var(--primary)" bg="var(--primary-bg)" onClick={() => navigate('/catechismo/bambini')} />
+          <StatCard num={stats.classi}  label="Classi"  color="var(--blue)"    bg="var(--blue-bg)"    onClick={() => navigate('/catechismo/classi')} />
+          <StatCard num={stats.utenti}  label="Utenti"  color="var(--red)"     bg="var(--red-bg)"     onClick={() => navigate('/catechismo/utenti')} />
         </div>
       )}
 
       {/* Accesso rapido */}
-      <h2 style={{ marginBottom: 12, fontSize: '0.95rem' }}>Accesso rapido</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-        {['admin','parroco','segreteria','catechista'].includes(profilo?.ruolo) && (
-          <ModuleCard icon="✅" label="Presenze" sub="Catechismo" color="var(--primary)" onClick={() => navigate('/catechismo/presenze')} />
-        )}
-        {['admin','parroco','segreteria','catechista'].includes(profilo?.ruolo) && (
-          <ModuleCard icon="👦" label="Bambini" sub="Catechismo" color="var(--primary)" onClick={() => navigate('/catechismo/bambini')} />
-        )}
-        {['admin','parroco','comitato'].includes(profilo?.ruolo) && (
-          <ModuleCard icon="📄" label="Lettere" sub="Comitato" color="var(--blue)" onClick={() => navigate('/comitato/lettere')} />
-        )}
-        {['admin','parroco','comitato'].includes(profilo?.ruolo) && (
-          <ModuleCard icon="🗓️" label="Calendario" sub="Comitato" color="var(--blue)" onClick={() => navigate('/comitato/calendario')} />
-        )}
-        {['admin','parroco','responsabile_coro','corista'].includes(profilo?.ruolo) && (
-          <ModuleCard icon="🎵" label="Canti" sub="Coro" color="var(--gold)" onClick={() => navigate('/coro/canti')} />
-        )}
-        {['admin','parroco','neocatecumenale','responsabile_neo'].includes(profilo?.ruolo) && (
-          <ModuleCard icon="🚪" label="Stanze" sub="Neocatec." color="var(--red)" onClick={() => navigate('/neo/stanze')} />
-        )}
-      </div>
-
-      {/* Grafici solo admin */}
-      {isAdmin && (
+      {shortcuts.length > 0 && (
         <>
-          <h2 style={{ marginBottom: 12, fontSize: '0.95rem' }}>📊 Andamento presenze</h2>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-body">
-              <p className="text-xs text-muted" style={{ marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Presenti / Assenti per mese</p>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={datiPresenze} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
-                  <XAxis dataKey="mese" tick={{ fontSize: 11, fill: 'var(--gray-500)' }} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--gray-500)' }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="presenti" stroke="var(--primary)" strokeWidth={2.5} dot={false} name="Presenti" />
-                  <Line type="monotone" dataKey="assenti"  stroke="var(--red)"     strokeWidth={2.5} dot={false} name="Assenti" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gray-500)', marginBottom: 10 }}>
+            Accesso rapido
           </div>
-
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-body">
-              <p className="text-xs text-muted" style={{ marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>% presenze per classe</p>
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={datiClassi} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
-                  <XAxis dataKey="classe" tick={{ fontSize: 11, fill: 'var(--gray-500)' }} />
-                  <YAxis domain={[60, 100]} tick={{ fontSize: 11, fill: 'var(--gray-500)' }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v) => [`${v}%`]} />
-                  <Bar dataKey="perc" fill="var(--primary)" radius={[4,4,0,0]} name="% presenze" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 24 }}>
+            {shortcuts.map(s => (
+              <button
+                key={s.path}
+                onClick={() => navigate(s.path)}
+                style={{
+                  background: '#fff', border: '1px solid var(--border)', borderRadius: 12,
+                  padding: '14px 6px', textAlign: 'center', cursor: 'pointer',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  transition: 'transform 0.12s',
+                }}
+                onTouchStart={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onTouchEnd={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <div style={{ fontSize: '1.5rem', marginBottom: 5 }}>{s.icon}</div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: s.color, lineHeight: 1.2 }}>{s.label}</div>
+              </button>
+            ))}
           </div>
         </>
       )}
 
       {/* Bacheca */}
-      <h2 style={{ marginBottom: 12, fontSize: '0.95rem' }}>📌 Ultimi avvisi</h2>
+      <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--gray-500)', marginBottom: 10 }}>
+        Avvisi
+      </div>
       {bacheca.length === 0 ? (
-        <div className="card"><div className="card-body text-muted text-sm">Nessun avviso presente.</div></div>
+        <div className="card">
+          <div className="card-body text-sm text-muted">Nessun avviso presente.</div>
+        </div>
       ) : bacheca.map(a => (
-        <div key={a.id} className="card" style={{ marginBottom: 10, borderLeft: '4px solid var(--primary)' }}>
+        <div key={a.id} className="card" style={{ marginBottom: 10, borderLeft: '3px solid var(--primary)' }}>
           <div className="card-body">
-            <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>{a.titolo}</div>
+            <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 3 }}>{a.titolo}</div>
             <div className="text-sm text-muted">{a.testo}</div>
-            <div className="text-xs text-muted" style={{ marginTop: 8 }}>
+            <div className="text-xs text-muted" style={{ marginTop: 6 }}>
               {new Date(a.created_at).toLocaleDateString('it-IT')} · <span className="badge badge-green">{a.destinatari}</span>
             </div>
           </div>
@@ -204,27 +127,14 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ num, label, icon, color, bg }) {
-  return (
-    <div style={{ background: bg, borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
-      <div style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1 }}>{num}</div>
-      <div style={{ fontSize: '0.68rem', color, fontWeight: 700, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-    </div>
-  )
-}
-
-function ModuleCard({ icon, label, sub, color, onClick }) {
+function StatCard({ num, label, color, bg, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="card"
-      style={{ padding: '18px 14px', textAlign: 'center', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s', activeStyle: {} }}
-      onTouchStart={e => e.currentTarget.style.transform = 'scale(0.97)'}
-      onTouchEnd={e => e.currentTarget.style.transform = 'scale(1)'}
+      style={{ background: bg, borderRadius: 12, padding: '14px 8px', textAlign: 'center', cursor: 'pointer' }}
     >
-      <div style={{ fontSize: '1.8rem', marginBottom: 6 }}>{icon}</div>
-      <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--gray-900)' }}>{label}</div>
-      <div style={{ fontSize: '0.72rem', color, fontWeight: 700, marginTop: 2 }}>{sub}</div>
+      <div style={{ fontSize: '1.7rem', fontWeight: 800, color, lineHeight: 1 }}>{num}</div>
+      <div style={{ fontSize: '0.66rem', color, fontWeight: 700, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
     </div>
   )
 }

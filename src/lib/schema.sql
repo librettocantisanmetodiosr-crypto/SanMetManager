@@ -280,6 +280,7 @@ create table public.avvisi_neo (
 
 alter table public.profili enable row level security;
 alter table public.classi enable row level security;
+alter table public.classi_catechisti enable row level security;
 alter table public.bambini enable row level security;
 alter table public.presenze enable row level security;
 alter table public.bacheca enable row level security;
@@ -314,14 +315,28 @@ create policy "profili_update" on public.profili for update
     )
   );
 
--- Classi: tutti gli autenticati leggono, solo admin/segreteria modificano
+-- Classi: tutti gli autenticati leggono, solo admin/segreteria/responsabile modificano
 create policy "classi_select" on public.classi for select using (auth.role() = 'authenticated');
 create policy "classi_insert" on public.classi for insert
-  with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria')));
+  with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria','responsabile')));
 create policy "classi_update" on public.classi for update
-  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria')));
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','segreteria','responsabile')));
 create policy "classi_delete" on public.classi for delete
   using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco')));
+
+-- classi_catechisti: tutti leggono, solo ruoli di gestione modificano
+create policy "classi_catechisti_select" on public.classi_catechisti
+  for select using (auth.role() = 'authenticated');
+create policy "classi_catechisti_insert" on public.classi_catechisti
+  for insert with check (
+    exists(select 1 from public.profili p where p.id = auth.uid()
+    and p.ruolo in ('admin','parroco','segreteria','responsabile'))
+  );
+create policy "classi_catechisti_delete" on public.classi_catechisti
+  for delete using (
+    exists(select 1 from public.profili p where p.id = auth.uid()
+    and p.ruolo in ('admin','parroco','segreteria','responsabile'))
+  );
 
 -- Bambini: catechista vede solo la sua classe
 create policy "bambini_select" on public.bambini for select
