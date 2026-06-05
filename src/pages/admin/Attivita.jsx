@@ -29,6 +29,7 @@ export default function Attivita() {
   const [utenti, setUtenti] = useState([])
   const [lastLogin, setLastLogin] = useState({})
   const [loading, setLoading] = useState(true)
+  const [sqlMancante, setSqlMancante] = useState(false)
   const [filtroUtente, setFiltroUtente] = useState('')
   const [filtroAzione, setFiltroAzione] = useState('')
 
@@ -36,21 +37,28 @@ export default function Attivita() {
 
   const carica = async () => {
     setLoading(true)
-    const [{ data: logData }, { data: profili }, { data: loginData }] = await Promise.all([
-      supabase.from('log_attivita')
-        .select('id, azione, dettaglio, created_at, profili(nome, cognome, username)')
-        .order('created_at', { ascending: false })
-        .limit(200),
-      supabase.from('profili').select('id, nome, cognome, username').eq('attivo', true).order('cognome'),
-      supabase.rpc('get_users_last_login').catch(() => ({ data: null })),
-    ])
+    setSqlMancante(false)
+    try {
+      const [resLog, resProfili, resLogin] = await Promise.all([
+        supabase.from('log_attivita')
+          .select('id, azione, dettaglio, created_at, autore_id, profili(nome, cognome, username)')
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase.from('profili').select('id, nome, cognome, username').eq('attivo', true).order('cognome'),
+        supabase.rpc('get_users_last_login'),
+      ])
 
-    setLog(logData || [])
-    setUtenti(profili || [])
+      if (resLog.error?.code === '42P01') { setSqlMancante(true); setLoading(false); return }
 
-    const map = {}
-    ;(loginData || []).forEach(r => { map[r.profilo_id] = r.last_sign_in })
-    setLastLogin(map)
+      setLog(resLog.data || [])
+      setUtenti(resProfili.data || [])
+
+      const map = {}
+      ;(resLogin.data || []).forEach(r => { map[r.profilo_id] = r.last_sign_in })
+      setLastLogin(map)
+    } catch (e) {
+      setSqlMancante(true)
+    }
     setLoading(false)
   }
 
@@ -66,6 +74,13 @@ export default function Attivita() {
         <h1>📋 Attività</h1>
         <span className="badge badge-gray">{filtrati.length} eventi</span>
       </div>
+
+      {sqlMancante && (
+        <div style={{ background:'var(--red-bg)', color:'var(--red)', borderRadius:10, padding:'14px 16px', marginBottom:20, fontSize:'0.85rem', lineHeight:1.6 }}>
+          <strong>⚠️ Tabella mancante</strong> — Devi eseguire il SQL su Supabase per attivare questa funzione.<br/>
+          Vai su <strong>Supabase → SQL Editor</strong> e incolla il blocco <code>log_attivita</code> dalle istruzioni.
+        </div>
+      )}
 
       {/* Ultimo accesso per utente */}
       <div style={{ marginBottom: 20 }}>

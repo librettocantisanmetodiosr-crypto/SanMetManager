@@ -81,8 +81,10 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) await supabase.from('log_attivita').insert({ utente_id: user.id, azione: 'LOGOUT' }).catch(() => {})
+    // fire-and-forget: non blocca il logout anche se la tabella non esiste
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) supabase.from('log_attivita').insert({ utente_id: user.id, azione: 'LOGOUT' })
+    }).catch(() => {})
     await supabase.auth.signOut()
     setProfilo(null)
   }
