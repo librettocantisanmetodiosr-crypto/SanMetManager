@@ -67,7 +67,7 @@ export default function Login() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden', marginBottom: 12, flexShrink: 0,
             boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
-            alignSelf: 'center',
+            margin: '0 auto 12px',
           }}>
             <img
               src="/logo-comitato.png"

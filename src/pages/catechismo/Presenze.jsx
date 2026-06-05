@@ -18,6 +18,9 @@ export default function Presenze() {
   const [dataId, setDataId] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [modalDataExtra, setModalDataExtra] = useState(false)
+  const [formDataExtra, setFormDataExtra] = useState({ data: new Date().toISOString().split('T')[0], descrizione: '' })
+  const [savingData, setSavingData] = useState(false)
 
   useEffect(() => { caricaClassi() }, [profilo])
   useEffect(() => { if (classeId) caricaDate(); setBambini([]); setPresenze({}) }, [classeId])
@@ -52,13 +55,35 @@ export default function Presenze() {
   }
 
   const caricaDate = async () => {
-    const { data } = await supabase
+    let q = supabase
       .from('date_catechismo')
-      .select('id, data, descrizione')
+      .select('id, data, descrizione, classe_id')
       .order('data', { ascending: false })
-      .limit(20)
+      .limit(30)
+    if (classeId) {
+      q = q.or(`classe_id.is.null,classe_id.eq.${classeId}`)
+    } else {
+      q = q.is('classe_id', null)
+    }
+    const { data } = await q
     setDate(data || [])
     if (data?.length > 0) setDataId(data[0].id)
+  }
+
+  const aggiungiDataExtra = async () => {
+    if (!formDataExtra.data) return
+    setSavingData(true)
+    const { error } = await supabase.from('date_catechismo').insert({
+      data: formDataExtra.data,
+      descrizione: formDataExtra.descrizione.trim() || 'Incontro extra',
+      classe_id: classeId,
+    })
+    setSavingData(false)
+    if (error) return toast('Errore: ' + error.message, 'error')
+    setModalDataExtra(false)
+    setFormDataExtra({ data: new Date().toISOString().split('T')[0], descrizione: '' })
+    caricaDate()
+    toast('Data extra aggiunta ✓', 'success')
   }
 
   const caricaBambiniEPresenze = async () => {
@@ -145,12 +170,21 @@ export default function Presenze() {
             </select>
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Data incontro</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>Data incontro</label>
+              {classeId && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.72rem', padding: '3px 10px' }}
+                  onClick={() => setModalDataExtra(true)}
+                >＋ Data extra</button>
+              )}
+            </div>
             <select className="form-control" value={dataId} onChange={e => setDataId(e.target.value)}>
               <option value="">— seleziona data —</option>
               {date.map(d => (
                 <option key={d.id} value={d.id}>
-                  {new Date(d.data + 'T00:00:00').toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'long', year:'numeric' })}
+                  {d.classe_id ? '⭐ ' : ''}{new Date(d.data + 'T00:00:00').toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'long', year:'numeric' })}
                   {d.descrizione ? ` — ${d.descrizione}` : ''}
                 </option>
               ))}
@@ -158,6 +192,35 @@ export default function Presenze() {
           </div>
         </div>
       </div>
+
+      {/* Modal aggiunta data extra */}
+      {modalDataExtra && (
+        <div className="modal-overlay" onClick={() => setModalDataExtra(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">⭐ Aggiungi data extra</div>
+            <p className="text-sm text-muted" style={{ marginBottom: 14 }}>
+              Aggiungi una data di incontro extra solo per questa classe (es: incontro genitori, ritiro…).
+            </p>
+            <div className="form-group">
+              <label className="form-label">Data *</label>
+              <input type="date" className="form-control" value={formDataExtra.data}
+                onChange={e => setFormDataExtra(f => ({ ...f, data: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descrizione</label>
+              <input className="form-control" placeholder="Es: Incontro genitori, Ritiro..." value={formDataExtra.descrizione}
+                onChange={e => setFormDataExtra(f => ({ ...f, descrizione: e.target.value }))} />
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-outline btn-block" onClick={() => setModalDataExtra(false)}>Annulla</button>
+              <button className="btn btn-primary btn-block" onClick={aggiungiDataExtra} disabled={savingData}>
+                {savingData ? 'Salvataggio…' : 'Aggiungi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats rapide */}
       {bambini.length > 0 && (

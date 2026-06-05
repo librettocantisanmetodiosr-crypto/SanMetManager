@@ -44,6 +44,7 @@ export default function Dashboard() {
   const shortcuts = [
     hasCatechismo && { icon: '✅', label: 'Presenze', path: '/catechismo/presenze', color: 'var(--primary)' },
     hasCatechismo && { icon: '👦', label: 'Bambini', path: '/catechismo/bambini', color: 'var(--primary)' },
+    hasCatechismo && { icon: '📝', label: 'Diario', path: '/catechismo/attivita', color: 'var(--primary)' },
     isAdmin        && { icon: '🏫', label: 'Classi', path: '/catechismo/classi', color: 'var(--primary)' },
     hasComitato    && { icon: '🗓️', label: 'Calendario', path: '/comitato/calendario', color: 'var(--blue)' },
     hasComitaEdit  && { icon: '📄', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
