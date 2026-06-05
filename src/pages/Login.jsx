@@ -61,12 +61,21 @@ export default function Login() {
 
         {/* Logo e titolo */}
         <div style={{ textAlign: 'center', marginBottom: 28, color: '#fff' }}>
-          <img
-            src="/logo-comitato.png"
-            alt="Comitato San Metodio"
-            style={{ width: 96, height: 96, objectFit: 'contain', marginBottom: 10, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }}
-            onError={e => { e.currentTarget.style.display = 'none'; document.getElementById('login-icon').style.display = 'block' }}
-          />
+          <div id="logo-wrap" style={{
+            width: 92, height: 92, borderRadius: '50%',
+            background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', marginBottom: 12, flexShrink: 0,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+            alignSelf: 'center',
+          }}>
+            <img
+              src="/logo-comitato.png"
+              alt="Comitato San Metodio"
+              style={{ width: 84, height: 84, objectFit: 'contain' }}
+              onError={e => { document.getElementById('logo-wrap').style.display = 'none'; document.getElementById('login-icon').style.display = 'block' }}
+            />
+          </div>
           <div id="login-icon" style={{ display: 'none', fontSize: '3.5rem', marginBottom: 8 }}>✝️</div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.08em', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
             SanMetManager
