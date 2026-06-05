@@ -498,3 +498,57 @@ alter table public.canti add column if not exists tempo_liturgico text;
 -- Esempio inserimento profilo admin dopo registrazione:
 -- insert into public.profili (id, username, nome, cognome, ruolo)
 -- values ('<uuid-from-auth>', 'marco.tarascio', 'Marco', 'Tarascio', 'admin');
+
+-- ═══════════════════════════════════════════════════
+-- LOG ATTIVITÀ ADMIN
+-- Eseguire in Supabase → SQL Editor
+-- ═══════════════════════════════════════════════════
+
+create table if not exists public.log_attivita (
+  id uuid default gen_random_uuid() primary key,
+  utente_id uuid references public.profili(id) on delete set null,
+  azione text not null,
+  dettaglio text,
+  created_at timestamptz default now()
+);
+
+alter table public.log_attivita enable row level security;
+
+-- Solo admin/parroco/responsabile possono leggere il log
+create policy "Admin legge log_attivita" on public.log_attivita
+  for select to authenticated
+  using (
+    exists (select 1 from public.profili where id = auth.uid() and ruolo in ('admin','parroco','responsabile'))
+  );
+
+-- Tutti gli autenticati possono inserire il proprio log
+create policy "Autenticati inseriscono log" on public.log_attivita
+  for insert to authenticated
+  with check (utente_id = auth.uid());
+
+-- ═══════════════════════════════════════════════════
+-- FUNZIONE: ultimo accesso utenti
+-- Richiede accesso a auth.users (SECURITY DEFINER)
+-- ═══════════════════════════════════════════════════
+
+create or replace function public.get_users_last_login()
+returns table (profilo_id uuid, last_sign_in timestamptz)
+language sql
+security definer
+set search_path = public
+as $$
+  select p.id as profilo_id, u.last_sign_in_at as last_sign_in
+  from auth.users u
+  join public.profili p on p.id = u.id
+  where p.attivo = true;
+$$;
+
+grant execute on function public.get_users_last_login() to authenticated;
+
+-- ═══════════════════════════════════════════════════
+-- MIGRAZIONE: colonna classe_id su date_catechismo
+-- Per date extra specifiche per classe (catechisti)
+-- ═══════════════════════════════════════════════════
+
+alter table public.date_catechismo
+  add column if not exists classe_id uuid references public.classi(id) on delete cascade;
