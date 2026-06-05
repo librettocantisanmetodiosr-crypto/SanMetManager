@@ -6,8 +6,8 @@ import { useToast } from '../../hooks/useToast'
 const vuota = { nome: '', anno_cammino: '', giorno: 'Sabato', note: '' }
 
 export default function Classi() {
-  const { profilo } = useAuth()
-  const isAdmin = ['admin','parroco','segreteria'].includes(profilo?.ruolo)
+  const { profilo, tuttiRuoli } = useAuth()
+  const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
   const { toast, ToastContainer } = useToast()
   const [classi, setClassi] = useState([])
   const [catechisti, setCatechisti] = useState([])
@@ -27,7 +27,7 @@ export default function Classi() {
       classi_catechisti(catechista_id, profili(nome, cognome))
     `).eq('attiva', true).order('nome')
 
-    if (profilo?.ruolo === 'catechista') {
+    if (!isAdmin && tuttiRuoli.includes('catechista')) {
       const { data: cc } = await supabase.from('classi_catechisti')
         .select('classe_id').eq('catechista_id', profilo.id)
       const ids = (cc || []).map(x => x.classe_id)
@@ -36,11 +36,16 @@ export default function Classi() {
     }
 
     const { data: cl } = await q
-    const { data: cat } = await supabase.from('profili')
-      .select('id, nome, cognome').eq('ruolo', 'catechista').eq('attivo', true).order('cognome')
+
+    // Include responsabili e utenti con catechista come ruolo extra
+    const { data: tutti } = await supabase.from('profili')
+      .select('id, nome, cognome, ruolo, ruoli_extra').eq('attivo', true).order('cognome')
+    const cat = (tutti || []).filter(p =>
+      p.ruolo === 'catechista' || p.ruolo === 'responsabile' || (p.ruoli_extra || []).includes('catechista')
+    )
 
     setClassi(cl || [])
-    setCatechisti(cat || [])
+    setCatechisti(cat)
     setLoading(false)
   }
 

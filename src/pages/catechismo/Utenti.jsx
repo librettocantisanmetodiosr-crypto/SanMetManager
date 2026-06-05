@@ -7,6 +7,7 @@ import { inviaBenvenuto } from '../../lib/emailService'
 import { emailConfigured } from '../../lib/emailConfig'
 
 const RUOLI = [
+  { value: 'responsabile',     label: 'Responsabile',  badge: 'badge-red',   desc: 'Accesso completo + può avere ruoli multipli' },
   { value: 'admin',            label: 'Admin',         badge: 'badge-red',   desc: 'Accesso completo a tutto' },
   { value: 'parroco',          label: 'Parroco',       badge: 'badge-red',   desc: 'Accesso completo a tutto' },
   { value: 'segreteria',       label: 'Segreteria',    badge: 'badge-blue',  desc: 'Gestione catechismo e utenti' },
@@ -20,8 +21,8 @@ const RUOLI = [
 
 const RUOLI_RISERVATI = ['admin', 'parroco']
 
-const vuotoNuovo = { email: '', password: '', nome: '', cognome: '', username: '', telefono: '', ruolo: 'catechista' }
-const vuotoModifica = { username: '', nome: '', cognome: '', telefono: '', ruolo: 'catechista' }
+const vuotoNuovo = { email: '', password: '', nome: '', cognome: '', username: '', telefono: '', ruolo: 'catechista', ruoli_extra: [] }
+const vuotoModifica = { username: '', nome: '', cognome: '', telefono: '', ruolo: 'catechista', ruoli_extra: [] }
 
 export default function Utenti() {
   const { profilo, resetPassword } = useAuth()
@@ -45,7 +46,7 @@ export default function Utenti() {
   const [mostraPasswordReset, setMostraPasswordReset] = useState(false)
   const [inviandoReset, setInviandoReset] = useState(false)
 
-  const isAdmin = ['admin', 'parroco'].includes(profilo?.ruolo)
+  const isAdmin = ['admin', 'parroco', 'responsabile'].includes(profilo?.ruolo)
 
   // Segreteria può creare utenti ma non admin/parroco
   const ruoliAssegnabili = isAdmin
@@ -109,6 +110,7 @@ export default function Utenti() {
         cognome: cognome.trim(),
         telefono: formNuovo.telefono.trim() || null,
         ruolo,
+        ruoli_extra: formNuovo.ruoli_extra || [],
       })
       if (profErr) {
         if (profErr.message.includes('unique')) throw new Error('Username già in uso, scegline un altro')
@@ -145,6 +147,7 @@ export default function Utenti() {
       cognome: formModifica.cognome,
       telefono: formModifica.telefono,
       ruolo: formModifica.ruolo,
+      ruoli_extra: formModifica.ruoli_extra || [],
     }).eq('id', modalModifica.id)
 
     if (error) {
@@ -196,7 +199,7 @@ export default function Utenti() {
   }
 
   const filtrati = utenti.filter(u => {
-    const okR = !filtroRuolo || u.ruolo === filtroRuolo
+    const okR = !filtroRuolo || u.ruolo === filtroRuolo || (u.ruoli_extra || []).includes(filtroRuolo)
     const okC = !cerca || `${u.nome} ${u.cognome} ${u.username}`.toLowerCase().includes(cerca.toLowerCase())
     return okR && okC
   })
@@ -217,7 +220,7 @@ export default function Utenti() {
 
       {/* Filtri ruolo */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
-        {RUOLI.filter(r => utenti.some(u => u.ruolo === r.value)).map(r => (
+        {RUOLI.filter(r => utenti.some(u => u.ruolo === r.value || (u.ruoli_extra || []).includes(r.value))).map(r => (
           <div key={r.value}
             onClick={() => setFiltroRuolo(filtroRuolo === r.value ? '' : r.value)}
             style={{
@@ -227,7 +230,7 @@ export default function Utenti() {
               color: filtroRuolo === r.value ? '#fff' : 'var(--gray-700)',
               border: '1.5px solid', borderColor: filtroRuolo === r.value ? 'var(--primary)' : 'var(--gray-200)',
             }}>
-            {r.label} ({utenti.filter(u => u.ruolo === r.value).length})
+            {r.label} ({utenti.filter(u => u.ruolo === r.value || (u.ruoli_extra || []).includes(r.value)).length})
           </div>
         ))}
       </div>
@@ -249,14 +252,22 @@ export default function Utenti() {
                     {badgeRuolo(u.ruolo)}
                     <button className="btn btn-outline btn-sm btn-icon" title="Reimposta password" onClick={() => apriReset(u)}>🔑</button>
                     <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
-                      setFormModifica({ username: u.username || '', nome: u.nome || '', cognome: u.cognome || '', telefono: u.telefono || '', ruolo: u.ruolo })
+                      setFormModifica({ username: u.username || '', nome: u.nome || '', cognome: u.cognome || '', telefono: u.telefono || '', ruolo: u.ruolo, ruoli_extra: u.ruoli_extra || [] })
                       setModalModifica(u)
                     }}>✏️</button>
                     <button className="btn btn-red btn-sm btn-icon" onClick={() => disattiva(u.id)}>🗑</button>
                   </div>
                 </div>
                 {u.telefono && <div className="text-sm text-muted">📞 {u.telefono}</div>}
-                {u.ruolo === 'catechista' && classiDiUtente(u.id) && (
+                {(u.ruoli_extra || []).length > 0 && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                    {(u.ruoli_extra || []).map(r => {
+                      const rObj = RUOLI.find(x => x.value === r)
+                      return <span key={r} className={`badge ${rObj?.badge || 'badge-gray'}`} style={{ fontSize: '0.65rem' }}>+{rObj?.label || r}</span>
+                    })}
+                  </div>
+                )}
+                {(u.ruolo === 'catechista' || (u.ruoli_extra || []).includes('catechista')) && classiDiUtente(u.id) && (
                   <div className="text-sm" style={{ color: 'var(--primary)', marginTop: 2 }}>
                     🏫 {classiDiUtente(u.id)}
                   </div>
@@ -332,13 +343,34 @@ export default function Utenti() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Ruolo</label>
+              <label className="form-label">Ruolo principale</label>
               <select className="form-control" value={formNuovo.ruolo}
-                onChange={e => setFormNuovo(f => ({ ...f, ruolo: e.target.value }))}>
+                onChange={e => setFormNuovo(f => ({ ...f, ruolo: e.target.value, ruoli_extra: (f.ruoli_extra || []).filter(x => x !== e.target.value) }))}>
                 {ruoliAssegnabili.map(r => (
                   <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Ruoli aggiuntivi (opzionale)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', maxHeight: 150, overflowY: 'auto' }}>
+                {RUOLI.filter(r => r.value !== formNuovo.ruolo).map(r => (
+                  <label key={r.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.83rem' }}>
+                    <input type="checkbox"
+                      checked={(formNuovo.ruoli_extra || []).includes(r.value)}
+                      onChange={() => setFormNuovo(f => ({
+                        ...f,
+                        ruoli_extra: (f.ruoli_extra || []).includes(r.value)
+                          ? f.ruoli_extra.filter(x => x !== r.value)
+                          : [...(f.ruoli_extra || []), r.value]
+                      }))}
+                      style={{ width: 15, height: 15, accentColor: 'var(--primary)' }}
+                    />
+                    <span>{r.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
@@ -471,13 +503,33 @@ export default function Utenti() {
                 onChange={e => setFormModifica(f => ({ ...f, telefono: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Ruolo</label>
+              <label className="form-label">Ruolo principale</label>
               <select className="form-control" value={formModifica.ruolo}
-                onChange={e => setFormModifica(f => ({ ...f, ruolo: e.target.value }))}>
+                onChange={e => setFormModifica(f => ({ ...f, ruolo: e.target.value, ruoli_extra: (f.ruoli_extra || []).filter(x => x !== e.target.value) }))}>
                 {ruoliAssegnabili.map(r => (
                   <option key={r.value} value={r.value}>{r.label} — {r.desc}</option>
                 ))}
               </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Ruoli aggiuntivi (opzionale)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', maxHeight: 150, overflowY: 'auto' }}>
+                {RUOLI.filter(r => r.value !== formModifica.ruolo).map(r => (
+                  <label key={r.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.83rem' }}>
+                    <input type="checkbox"
+                      checked={(formModifica.ruoli_extra || []).includes(r.value)}
+                      onChange={() => setFormModifica(f => ({
+                        ...f,
+                        ruoli_extra: (f.ruoli_extra || []).includes(r.value)
+                          ? f.ruoli_extra.filter(x => x !== r.value)
+                          : [...(f.ruoli_extra || []), r.value]
+                      }))}
+                      style={{ width: 15, height: 15, accentColor: 'var(--primary)' }}
+                    />
+                    <span>{r.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-outline btn-block" onClick={() => setModalModifica(null)}>Annulla</button>

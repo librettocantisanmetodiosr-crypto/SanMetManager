@@ -35,10 +35,11 @@ import NeoStanze from './pages/neocatecumenali/Stanze'
 import NeoAvvisi from './pages/neocatecumenali/Avvisi'
 
 function ProtectedRoute({ children, ruoli }) {
-  const { user, profilo, loading } = useAuth()
+  const { user, tuttiRuoli, loading } = useAuth()
   if (loading) return <div className="loader"><div className="spinner" />Caricamento…</div>
   if (!user) return <Navigate to="/login" replace />
-  if (ruoli && !ruoli.includes(profilo?.ruolo)) return <Navigate to="/" replace />
+  const isSuperUser = ['admin', 'parroco', 'responsabile'].some(r => tuttiRuoli.includes(r))
+  if (ruoli && !isSuperUser && !ruoli.some(r => tuttiRuoli.includes(r))) return <Navigate to="/" replace />
   return children
 }
 
