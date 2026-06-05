@@ -85,12 +85,13 @@ export default function Utenti() {
     }
     setCreando(true)
     try {
-      // Client temporaneo con storage no-op: signUp non tocca né legge la sessione admin
+      // storageKey univoco → BroadcastChannel separato dal client principale
+      // così signUp non propaga l'evento SIGNED_IN al client admin
       const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
       const tempClient = createClient(
         process.env.REACT_APP_SUPABASE_URL,
         process.env.REACT_APP_SUPABASE_ANON_KEY,
-        { auth: { storage: noopStorage, persistSession: false, autoRefreshToken: false } }
+        { auth: { storageKey: 'tmp-reg-' + Date.now(), storage: noopStorage, persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
       )
       const { data: authData, error: authErr } = await tempClient.auth.signUp({
         email: email.trim(),
