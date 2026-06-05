@@ -192,10 +192,13 @@ export default function Presenze() {
         <div className="empty-state"><div className="icon">👦</div><p>Nessun bambino in questa classe</p></div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-          {bambini.map(b => (
+          {bambini.map((b, i) => (
             <div key={b.id} className="card">
               <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{b.cognome} {b.nome}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ minWidth:20, fontSize:'0.72rem', fontWeight:700, color:'var(--gray-400)', flexShrink:0 }}>{i+1}</span>
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{b.cognome} {b.nome}</div>
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => togglePresenza(b.id, 'P')}

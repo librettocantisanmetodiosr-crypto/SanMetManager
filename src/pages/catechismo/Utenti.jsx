@@ -247,13 +247,16 @@ export default function Utenti() {
 
       {loading ? <div className="loader"><div className="spinner" /></div> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtrati.map(u => (
+          {filtrati.map((u, i) => (
             <div key={u.id} className="card">
               <div className="card-body" style={{ padding: '13px 14px' }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
-                  <div>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{ minWidth:20, fontSize:'0.72rem', fontWeight:700, color:'var(--gray-400)', flexShrink:0 }}>{i+1}</span>
+                    <div>
                     <div style={{ fontWeight: 800 }}>{u.nome} {u.cognome}</div>
                     <div className="text-xs text-muted">@{u.username}</div>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {badgeRuolo(u.ruolo)}

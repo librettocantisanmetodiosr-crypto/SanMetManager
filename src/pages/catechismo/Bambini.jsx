@@ -157,11 +157,13 @@ export default function Bambini() {
 
       {loading ? <div className="loader"><div className="spinner"/></div> : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {filtrati.map(b => (
+          {filtrati.map((b, i) => (
             <div key={b.id} className="card">
               <div className="card-body" style={{ padding:'12px 14px' }}>
                 <div className="flex items-center justify-between">
-                  <div style={{ flex:1 }}>
+                  <div style={{ flex:1, display:'flex', alignItems:'flex-start', gap:10 }}>
+                    <span style={{ minWidth:20, paddingTop:2, fontSize:'0.72rem', fontWeight:700, color:'var(--gray-400)', flexShrink:0 }}>{i+1}</span>
+                    <div style={{ flex:1 }}>
                     <div style={{ fontWeight:800 }}>{b.cognome} {b.nome}</div>
                     <div className="text-sm text-muted">
                       {b.classi?.nome || 'Nessuna classe'}
@@ -185,6 +187,7 @@ export default function Bambini() {
                         )}
                       </div>
                     )}
+                    </div>{/* fine inner flex */}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                     <button className="btn btn-outline btn-sm" onClick={() => apriStats(b)}>📊</button>
