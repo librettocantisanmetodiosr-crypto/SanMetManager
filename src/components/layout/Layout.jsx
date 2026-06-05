@@ -7,9 +7,9 @@ const SEZIONI = [
     key: 'catechismo', label: 'Catechismo', icon: '📚', color: 'var(--primary)',
     ruoli: ['admin','parroco','segreteria','catechista','responsabile'],
     voci: [
-      { path: '/catechismo/classi',    label: 'Classi',    icon: '🏫' },
-      { path: '/catechismo/bambini',   label: 'Bambini',   icon: '👦' },
       { path: '/catechismo/presenze',  label: 'Presenze',  icon: '✅' },
+      { path: '/catechismo/bambini',   label: 'Bambini',   icon: '👦' },
+      { path: '/catechismo/classi',    label: 'Classi',    icon: '🏫' },
       { path: '/catechismo/report',    label: 'Report',    icon: '📊' },
       { path: '/catechismo/date',      label: 'Date',      icon: '📅', ruoli: ['admin','parroco','segreteria','responsabile'] },
       { path: '/catechismo/supplenze', label: 'Supplenze', icon: '🔄', ruoli: ['admin','parroco','segreteria','responsabile'] },
