@@ -252,7 +252,7 @@ export default function Utenti() {
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {badgeRuolo(u.ruolo)}
-                    <button className="btn btn-outline btn-sm btn-icon" title="Condividi accesso" onClick={() => { setModalCondivisione(u); setPwdCondivisione('') }}>📤</button>
+                    <button className="btn btn-outline btn-sm btn-icon" title="Condividi accesso" onClick={() => { setModalCondivisione(u); setPwdCondivisione(u.cognome + '2026') }}>📤</button>
                     <button className="btn btn-outline btn-sm btn-icon" title="Reimposta password" onClick={() => apriReset(u)}>🔑</button>
                     <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
                       setFormModifica({ username: u.username || '', nome: u.nome || '', cognome: u.cognome || '', telefono: u.telefono || '', ruolo: u.ruolo, ruoli_extra: u.ruoli_extra || [] })
