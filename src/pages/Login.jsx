@@ -61,21 +61,13 @@ export default function Login() {
 
         {/* Logo e titolo */}
         <div style={{ textAlign: 'center', marginBottom: 28, color: '#fff' }}>
-          <div id="logo-wrap" style={{
-            width: 92, height: 92, borderRadius: '50%',
-            background: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', marginBottom: 12, flexShrink: 0,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
-            margin: '0 auto 12px',
-          }}>
-            <img
-              src="/logo-comitato.png"
-              alt="Comitato San Metodio"
-              style={{ width: 84, height: 84, objectFit: 'contain' }}
-              onError={e => { document.getElementById('logo-wrap').style.display = 'none'; document.getElementById('login-icon').style.display = 'block' }}
-            />
-          </div>
+          <img
+            id="login-logo"
+            src="/logo-comitato.png"
+            alt="Comitato San Metodio"
+            style={{ width: 110, height: 110, objectFit: 'contain', display: 'block', margin: '0 auto 12px', borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.35)' }}
+            onError={e => { e.currentTarget.style.display = 'none'; document.getElementById('login-icon').style.display = 'block' }}
+          />
           <div id="login-icon" style={{ display: 'none', fontSize: '3.5rem', marginBottom: 8 }}>✝️</div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.08em', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
             SanMetManager

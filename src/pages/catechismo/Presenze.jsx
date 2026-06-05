@@ -54,19 +54,24 @@ export default function Presenze() {
   }
 
   const caricaDate = async () => {
-    let q = supabase
-      .from('date_catechismo')
-      .select('id, data, descrizione, classe_id')
-      .order('data', { ascending: false })
-      .limit(30)
-    if (classeId) {
-      q = q.or(`classe_id.is.null,classe_id.eq.${classeId}`)
-    } else {
-      q = q.is('classe_id', null)
-    }
-    const { data } = await q
-    setDate(data || [])
-    if (data?.length > 0) setDataId(data[0].id)
+    const [resGlobali, resExtra] = await Promise.all([
+      supabase.from('date_catechismo')
+        .select('id, data, descrizione, classe_id')
+        .is('classe_id', null)
+        .order('data', { ascending: false })
+        .limit(20),
+      classeId
+        ? supabase.from('date_catechismo')
+            .select('id, data, descrizione, classe_id')
+            .eq('classe_id', classeId)
+            .order('data', { ascending: false })
+            .limit(10)
+        : Promise.resolve({ data: [] }),
+    ])
+    const tutte = [...(resGlobali.data || []), ...(resExtra.data || [])]
+      .sort((a, b) => b.data.localeCompare(a.data))
+    setDate(tutte)
+    if (tutte.length > 0) setDataId(tutte[0].id)
   }
 
   const aggiungiDataExtra = async () => {
