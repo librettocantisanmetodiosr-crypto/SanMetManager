@@ -372,11 +372,34 @@ create policy "canto_attivo_select" on public.canto_attivo for select using (tru
 create policy "canto_attivo_update" on public.canto_attivo for update
   using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro')));
 
--- Lettere: solo comitato e admin
+-- Lettere: solo responsabile_comitato e admin (comitato semplice non accede)
 create policy "lettere_select" on public.lettere for select
-  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','comitato')));
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato')));
 create policy "lettere_insert" on public.lettere for insert
-  with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','comitato')));
+  with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato')));
+create policy "lettere_update" on public.lettere for update
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato')));
+
+-- eventi_calendario: tutti vedono, solo responsabile_comitato/admin modificano
+alter table public.eventi_calendario enable row level security;
+create policy "eventi_select" on public.eventi_calendario for select using (auth.role() = 'authenticated');
+create policy "eventi_insert" on public.eventi_calendario for insert
+  with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
+create policy "eventi_update" on public.eventi_calendario for update
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
+create policy "eventi_delete" on public.eventi_calendario for delete
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
+
+-- rubrica: solo responsabile_comitato/admin
+alter table public.rubrica enable row level security;
+create policy "rubrica_select" on public.rubrica for select
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
+create policy "rubrica_insert" on public.rubrica for insert
+  with check (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
+create policy "rubrica_update" on public.rubrica for update
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
+create policy "rubrica_delete" on public.rubrica for delete
+  using (exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_comitato','responsabile')));
 
 -- Bacheca: tutti leggono
 create policy "bacheca_select" on public.bacheca for select using (auth.role() = 'authenticated');

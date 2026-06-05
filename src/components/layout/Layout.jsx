@@ -18,11 +18,11 @@ const SEZIONI = [
   },
   {
     key: 'comitato', label: 'Comitato', icon: '📋', color: 'var(--blue)',
-    ruoli: ['admin','parroco','comitato','responsabile'],
+    ruoli: ['admin','parroco','comitato','responsabile_comitato','responsabile'],
     voci: [
       { path: '/comitato/calendario', label: 'Calendario', icon: '🗓️' },
-      { path: '/comitato/lettere',    label: 'Lettere',    icon: '📄' },
-      { path: '/comitato/rubrica',    label: 'Rubrica',    icon: '📇' },
+      { path: '/comitato/lettere',    label: 'Lettere',    icon: '📄', ruoli: ['admin','parroco','responsabile_comitato','responsabile'] },
+      { path: '/comitato/rubrica',    label: 'Rubrica',    icon: '📇', ruoli: ['admin','parroco','responsabile_comitato','responsabile'] },
     ]
   },
   {

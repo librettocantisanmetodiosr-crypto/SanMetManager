@@ -13,9 +13,9 @@ const fmtData = (dataStr) => {
 }
 
 export default function Calendario() {
-  const { profilo } = useAuth()
+  const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const canEdit = ['admin','parroco','comitato'].includes(profilo?.ruolo)
+  const canEdit = ['admin','parroco','responsabile_comitato','responsabile'].some(r => tuttiRuoli.includes(r))
   const [eventi, setEventi] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)

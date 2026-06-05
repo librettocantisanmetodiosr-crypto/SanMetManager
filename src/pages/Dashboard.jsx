@@ -11,7 +11,8 @@ export default function Dashboard() {
 
   const isAdmin = ['admin','parroco','segreteria'].some(r => tuttiRuoli.includes(r))
   const hasCatechismo = ['admin','parroco','segreteria','catechista','responsabile'].some(r => tuttiRuoli.includes(r))
-  const hasComitato = ['admin','parroco','comitato'].some(r => tuttiRuoli.includes(r))
+  const hasComitato = ['admin','parroco','comitato','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
+  const hasComitaEdit = ['admin','parroco','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
   const hasCoro = ['admin','parroco','responsabile_coro','corista'].some(r => tuttiRuoli.includes(r))
   const hasNeo = ['admin','parroco','neocatecumenale','responsabile_neo'].some(r => tuttiRuoli.includes(r))
 
@@ -45,7 +46,7 @@ export default function Dashboard() {
     hasCatechismo && { icon: '👦', label: 'Bambini', path: '/catechismo/bambini', color: 'var(--primary)' },
     isAdmin        && { icon: '🏫', label: 'Classi', path: '/catechismo/classi', color: 'var(--primary)' },
     hasComitato    && { icon: '🗓️', label: 'Calendario', path: '/comitato/calendario', color: 'var(--blue)' },
-    hasComitato    && { icon: '📄', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
+    hasComitaEdit  && { icon: '📄', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
     hasCoro        && { icon: '🎵', label: 'Canti', path: '/coro/canti', color: 'var(--gold)' },
     hasNeo         && { icon: '🚪', label: 'Stanze', path: '/neo/stanze', color: 'var(--red)' },
     isAdmin        && { icon: '👤', label: 'Utenti', path: '/admin/utenti', color: 'var(--gray-700)' },
