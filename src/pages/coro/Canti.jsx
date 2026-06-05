@@ -56,6 +56,48 @@ function trasponiTesto(testo, semitoni) {
 
 const vuotoForm = { titolo:'', categoria:'', tonalita:'', tempo_liturgico:'', testo:'' }
 
+// ── Parsing per editor click-to-chord ───────────────────────────
+function parseTesto(testo) {
+  if (!testo) return { linee: [], map: {} }
+  const map = {}
+  const linee = testo.split('\n').map((riga, li) => {
+    if (riga.startsWith('## ')) return { type: 'section', text: riga.slice(3) }
+    if (!riga.trim()) return { type: 'empty' }
+    const words = []
+    let wi = 0, i = 0, pendingChord = null
+    while (i < riga.length) {
+      if (riga[i] === '[') {
+        const end = riga.indexOf(']', i)
+        if (end !== -1) { pendingChord = riga.slice(i+1, end); i = end+1; continue }
+      }
+      if (riga[i] === ' ' || riga[i] === '\t') {
+        let sp = ''
+        while (i < riga.length && (riga[i] === ' ' || riga[i] === '\t')) sp += riga[i++]
+        words.push({ id: `${li}-s${wi}`, text: sp, isSpace: true })
+      } else {
+        let word = ''
+        while (i < riga.length && riga[i] !== ' ' && riga[i] !== '\t' && riga[i] !== '[') word += riga[i++]
+        if (word) {
+          const id = `${li}-${wi}`
+          if (pendingChord) { map[id] = pendingChord; pendingChord = null }
+          words.push({ id, text: word, isSpace: false })
+          wi++
+        }
+      }
+    }
+    return { type: 'words', words }
+  })
+  return { linee, map }
+}
+
+function ricostruisciTesto(linee, map) {
+  return linee.map(l => {
+    if (l.type === 'section') return `## ${l.text}`
+    if (l.type === 'empty') return ''
+    return l.words.map(w => w.isSpace ? w.text : (map[w.id] ? `[${map[w.id]}]${w.text}` : w.text)).join('')
+  }).join('\n')
+}
+
 // ── Rendering professionale: accordi sopra le parole ────────────
 function TestoFormattato({ testo, fontSize = 15 }) {
   if (!testo) return null
@@ -159,6 +201,11 @@ export default function Canti() {
   const [fontSize, setFontSize] = useState(15)
   const [transposeOffset, setTransposeOffset] = useState(0)
   const [tabAccordi, setTabAccordi] = useState(0)
+  // Editor click-to-chord
+  const [modoEditor, setModoEditor] = useState('testo') // 'testo' | 'accordi'
+  const [lineeParole, setLineeParole] = useState([])
+  const [accordiMap, setAccordiMap] = useState({})
+  const [wordAttiva, setWordAttiva] = useState(null)
 
   const [uploadingPdf, setUploadingPdf] = useState(null)
   const pdfInputRef = useRef(null)
@@ -240,25 +287,44 @@ export default function Canti() {
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
   }
 
+  const resetEditorState = () => {
+    setModoEditor('testo'); setLineeParole([]); setAccordiMap({}); setWordAttiva(null)
+    setShowPreview(false); setTabAccordi(0)
+  }
+
   const apriNuovo = () => {
     setForm(vuotoForm); setTipoIns('testo'); setPdfFile(null)
-    setShowPreview(false); setTabAccordi(0); setModal('nuovo')
+    resetEditorState(); setModal('nuovo')
   }
   const apriModifica = (c) => {
     setForm({ titolo:c.titolo||'', categoria:c.categoria||'', tonalita:c.tonalita||'',
       tempo_liturgico:c.tempo_liturgico||'', testo:c.testo||'' })
     setTipoIns(c.testo ? 'testo' : 'pdf')
-    setPdfFile(null); setShowPreview(false); setTabAccordi(0); setModal(c)
+    setPdfFile(null); resetEditorState(); setModal(c)
+  }
+
+  const entraChordsMode = () => {
+    const { linee, map } = parseTesto(form.testo)
+    setLineeParole(linee); setAccordiMap(map); setWordAttiva(null)
+    setModoEditor('accordi')
+  }
+  const tornaTestoMode = () => {
+    const testo = ricostruisciTesto(lineeParole, accordiMap)
+    setForm(f => ({...f, testo})); setWordAttiva(null); setModoEditor('testo')
   }
 
   const salva = async () => {
     if (!form.titolo.trim()) return toast('Inserisci il titolo','error')
     if (tipoIns === 'pdf' && modal === 'nuovo' && !pdfFile) return toast('Seleziona un file PDF','error')
     setSaving(true)
+    // Se siamo in modalità accordi, ricostruiamo il testo prima di salvare
+    const testoFinale = (tipoIns === 'testo' && modoEditor === 'accordi')
+      ? ricostruisciTesto(lineeParole, accordiMap)
+      : form.testo
     const dati = {
       titolo: form.titolo.trim(), categoria: form.categoria || null,
       tonalita: form.tonalita || null, tempo_liturgico: form.tempo_liturgico || null,
-      testo: tipoIns === 'testo' ? (form.testo || null) : null, autore_id: profilo?.id,
+      testo: tipoIns === 'testo' ? (testoFinale || null) : null, autore_id: profilo?.id,
     }
     let cantoId
     if (modal === 'nuovo') {
@@ -609,16 +675,34 @@ export default function Canti() {
 
             {tipoIns === 'testo' && (
               <div className="form-group">
+                {/* Header con toggle modo */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
                   <label className="form-label" style={{ margin:0 }}>Testo e accordi</label>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowPreview(v=>!v)}>
-                    {showPreview ? '✏️ Editor' : '👁 Anteprima'}
-                  </button>
+                  <div style={{ display:'flex', gap:6 }}>
+                    {modoEditor === 'testo' && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowPreview(v=>!v)}>
+                        {showPreview ? '✏️ Editor' : '👁 Anteprima'}
+                      </button>
+                    )}
+                    {modoEditor === 'testo' && !showPreview && (
+                      <button type="button" className="btn btn-sm"
+                        onClick={entraChordsMode}
+                        style={{ background:'#1565c0', color:'#fff', fontWeight:700, fontSize:'0.78rem', padding:'4px 10px', borderRadius:8 }}
+                        disabled={!form.testo.trim()}>
+                        🎸 Accordi
+                      </button>
+                    )}
+                    {modoEditor === 'accordi' && (
+                      <button type="button" className="btn btn-outline btn-sm" onClick={tornaTestoMode}>
+                        ← Testo
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {!showPreview ? (
+                {/* MODO TESTO */}
+                {modoEditor === 'testo' && !showPreview && (
                   <>
-                    {/* Sezioni */}
                     <div style={{ marginBottom:10 }}>
                       <div style={{ fontSize:'0.67rem', fontWeight:700, color:'var(--gray-400)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:5 }}>Sezioni</div>
                       <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
@@ -631,52 +715,131 @@ export default function Canti() {
                         ))}
                       </div>
                     </div>
-
-                    {/* Accordi a tab */}
-                    <div style={{ marginBottom:10 }}>
-                      <div style={{ display:'flex', borderRadius:8, overflow:'hidden', border:'1.5px solid var(--gray-200)', marginBottom:8 }}>
-                        {ACCORDI_GRUPPI.map((g, idx) => (
-                          <button key={g.label} type="button" onClick={() => setTabAccordi(idx)}
-                            style={{ flex:1, padding:'6px 0', border:'none', cursor:'pointer',
-                              fontSize:'0.73rem', fontWeight:800,
-                              background: tabAccordi===idx ? g.col : '#fff',
-                              color: tabAccordi===idx ? '#fff' : 'var(--gray-600)',
-                              borderRight: idx < ACCORDI_GRUPPI.length-1 ? '1px solid var(--gray-200)' : 'none',
-                              transition:'all 0.15s' }}>
-                            {g.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                        {ACCORDI_GRUPPI[tabAccordi].list.map(a => (
-                          <button key={a} type="button" onClick={() => inserisci(`[${a}]`)}
-                            style={{ padding:'5px 10px', borderRadius:7, cursor:'pointer',
-                              border:`1.5px solid ${ACCORDI_GRUPPI[tabAccordi].col}`,
-                              color: ACCORDI_GRUPPI[tabAccordi].col,
-                              background:'#fff', fontWeight:700, fontSize:'0.85rem', minWidth:38, textAlign:'center',
-                              transition:'background 0.1s' }}>
-                            {a}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-muted" style={{ marginBottom:6 }}>
-                      Clicca un accordo per inserirlo dove si trova il cursore · <strong>[Do]</strong> = accordo
+                    <div className="text-xs text-muted" style={{ marginBottom:8 }}>
+                      Incolla/scrivi il testo, poi clicca <strong>🎸 Accordi</strong> per posizionarli graficamente.
                     </div>
                     <textarea ref={textareaRef} className="form-control" rows={10}
                       value={form.testo}
                       onChange={e => setForm(f=>({...f,testo:e.target.value}))}
-                      placeholder={'## Ritornello\n[Sol]Tu sei la mia vi[Re]ta...\n\n## Strofa 1\n[Do]Nel cammino...'}
+                      placeholder={'Incolla qui il testo del canto...\n\n## Ritornello\nTu sei la mia vita...\n\n## Strofa 1\nNel cammino insieme...'}
                       style={{ fontFamily:'monospace', fontSize:13, lineHeight:1.7 }}/>
                   </>
-                ) : (
-                  /* Anteprima professionale */
+                )}
+
+                {modoEditor === 'testo' && showPreview && (
                   <div style={{ border:'1.5px solid var(--gray-200)', borderRadius:10, padding:'16px', minHeight:200, background:'#fdfcfb', overflowY:'auto', maxHeight:340 }}>
                     {form.testo
                       ? <TestoFormattato testo={form.testo} fontSize={14}/>
                       : <p className="text-muted text-sm" style={{ fontStyle:'italic' }}>Scrivi il testo nell'editor per vedere l'anteprima…</p>}
                   </div>
+                )}
+
+                {/* MODO ACCORDI: click-to-place */}
+                {modoEditor === 'accordi' && (
+                  <>
+                    <div className="text-xs text-muted" style={{ marginBottom:8, padding:'6px 10px', background:'#e8f0fe', borderRadius:8, color:'#1565c0', fontWeight:600 }}>
+                      Tocca una parola per aggiungere o cambiare l'accordo sopra di essa
+                    </div>
+
+                    {/* Canvas testo con accordi cliccabili */}
+                    <div style={{ overflowY:'auto', maxHeight:260, padding:'12px 10px', background:'#fafafa', borderRadius:10, border:'1.5px solid var(--gray-200)', marginBottom:10 }}>
+                      {lineeParole.length === 0 ? (
+                        <p className="text-sm text-muted">Nessun testo da mostrare.</p>
+                      ) : lineeParole.map((linea, li) => {
+                        if (linea.type === 'section') return (
+                          <div key={li} style={{ fontWeight:800, color:'var(--primary)', fontSize:'0.72rem', textTransform:'uppercase', letterSpacing:'0.1em', marginTop:14, marginBottom:6 }}>
+                            § {linea.text}
+                          </div>
+                        )
+                        if (linea.type === 'empty') return <div key={li} style={{ height:10 }} />
+                        return (
+                          <div key={li} style={{ display:'flex', flexWrap:'wrap', alignItems:'flex-end', marginBottom:8 }}>
+                            {linea.words.map(w => {
+                              if (w.isSpace) return (
+                                <span key={w.id} style={{ display:'inline-block', whiteSpace:'pre' }}>
+                                  <div style={{ minHeight:26 }} />
+                                  <span style={{ fontSize:15 }}>{w.text}</span>
+                                </span>
+                              )
+                              const chord = accordiMap[w.id]
+                              const isActive = wordAttiva === w.id
+                              return (
+                                <span key={w.id} style={{ display:'inline-block', textAlign:'center', cursor:'pointer', userSelect:'none' }}
+                                  onClick={() => setWordAttiva(isActive ? null : w.id)}>
+                                  <div style={{
+                                    minHeight:24, minWidth:28,
+                                    padding:'1px 4px', borderRadius:5, marginBottom:1,
+                                    fontSize:'0.79rem', fontWeight:900, lineHeight:1.4,
+                                    color: chord ? '#1565c0' : (isActive ? 'var(--primary)' : 'var(--gray-300)'),
+                                    background: isActive ? 'var(--primary-bg)' : (chord ? '#e8f0fe' : 'transparent'),
+                                    border: `1.5px solid ${isActive ? 'var(--primary)' : (chord ? '#1565c0' : 'transparent')}`,
+                                    textAlign:'center', transition:'all 0.1s',
+                                  }}>
+                                    {chord || (isActive ? '···' : '+')}
+                                  </div>
+                                  <div style={{ fontSize:15, lineHeight:1.5, fontFamily:'Georgia, serif', color:'var(--gray-800)' }}>{w.text}</div>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Pannello scelta accordo */}
+                    {wordAttiva ? (
+                      <div style={{ background:'#fff', borderRadius:12, padding:12, border:'1.5px solid #1565c0', boxShadow:'0 4px 16px rgba(21,101,192,0.15)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                          <span style={{ fontSize:'0.82rem', fontWeight:700, color:'var(--gray-700)' }}>
+                            Accordo per: <strong style={{ color:'#1565c0' }}>
+                              {lineeParole.flatMap(l => l.words || []).find(w => w.id === wordAttiva)?.text}
+                            </strong>
+                          </span>
+                          <div style={{ display:'flex', gap:5 }}>
+                            {accordiMap[wordAttiva] && (
+                              <button type="button" onClick={() => { setAccordiMap(m => { const n={...m}; delete n[wordAttiva]; return n }) }}
+                                style={{ padding:'3px 8px', borderRadius:6, border:'1.5px solid var(--red)', color:'var(--red)', background:'#fff', fontSize:'0.72rem', cursor:'pointer', fontWeight:700 }}>
+                                🗑
+                              </button>
+                            )}
+                            <button type="button" onClick={() => setWordAttiva(null)}
+                              style={{ padding:'3px 8px', borderRadius:6, border:'1.5px solid var(--gray-200)', color:'var(--gray-500)', background:'#fff', fontSize:'0.72rem', cursor:'pointer' }}>
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        {/* Tab */}
+                        <div style={{ display:'flex', borderRadius:8, overflow:'hidden', border:'1.5px solid var(--gray-200)', marginBottom:8 }}>
+                          {ACCORDI_GRUPPI.map((g, idx) => (
+                            <button key={g.label} type="button" onClick={() => setTabAccordi(idx)}
+                              style={{ flex:1, padding:'5px 0', border:'none', cursor:'pointer', fontSize:'0.72rem', fontWeight:800,
+                                background: tabAccordi===idx ? g.col : '#fff',
+                                color: tabAccordi===idx ? '#fff' : 'var(--gray-600)',
+                                borderRight: idx < ACCORDI_GRUPPI.length-1 ? '1px solid var(--gray-200)' : 'none' }}>
+                              {g.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                          {ACCORDI_GRUPPI[tabAccordi].list.map(a => (
+                            <button key={a} type="button"
+                              onClick={() => { setAccordiMap(m => ({...m, [wordAttiva]: a})); setWordAttiva(null) }}
+                              style={{ padding:'6px 11px', borderRadius:7, cursor:'pointer',
+                                border:`1.5px solid ${accordiMap[wordAttiva] === a ? ACCORDI_GRUPPI[tabAccordi].col : 'var(--gray-200)'}`,
+                                background: accordiMap[wordAttiva] === a ? ACCORDI_GRUPPI[tabAccordi].col : '#fff',
+                                color: accordiMap[wordAttiva] === a ? '#fff' : 'var(--gray-700)',
+                                fontWeight:700, fontSize:'0.85rem', minWidth:42, textAlign:'center' }}>
+                              {a}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted" style={{ textAlign:'center', padding:'8px', color:'var(--gray-400)' }}>
+                        ↑ tocca una parola per posizionare l'accordo
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

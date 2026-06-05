@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 
 const vuota = { nome: '', anno_cammino: '', giorno: 'Sabato', note: '' }
 
 export default function Classi() {
+  const { profilo } = useAuth()
+  const isAdmin = ['admin','parroco','segreteria'].includes(profilo?.ruolo)
   const { toast, ToastContainer } = useToast()
   const [classi, setClassi] = useState([])
   const [catechisti, setCatechisti] = useState([])
@@ -90,7 +93,7 @@ export default function Classi() {
       <ToastContainer />
       <div className="flex items-center justify-between mb-4">
         <h1>🏫 Classi</h1>
-        <button className="btn btn-primary btn-sm" onClick={apriNuova}>＋ Nuova</button>
+        {isAdmin && <button className="btn btn-primary btn-sm" onClick={apriNuova}>＋ Nuova</button>}
       </div>
 
       {loading ? (
@@ -106,10 +109,12 @@ export default function Classi() {
                 <div className="card-body">
                   <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
                     <h3>{c.nome}</h3>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-outline btn-sm" onClick={() => apriModifica(c)}>✏️</button>
-                      <button className="btn btn-red btn-sm" onClick={() => elimina(c.id)}>🗑</button>
-                    </div>
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => apriModifica(c)}>✏️</button>
+                        <button className="btn btn-red btn-sm" onClick={() => elimina(c.id)}>🗑</button>
+                      </div>
+                    )}
                   </div>
                   <div className="text-sm text-muted">{c.anno_cammino && <span>Anno: {c.anno_cammino} · </span>}{c.giorno}</div>
                   <div className="text-sm" style={{ marginTop: 4 }}>👤 {cats}</div>
