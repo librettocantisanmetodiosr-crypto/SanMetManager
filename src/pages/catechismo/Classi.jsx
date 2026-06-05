@@ -17,15 +17,25 @@ export default function Classi() {
   const [selectedCatechisti, setSelectedCatechisti] = useState([])
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { carica() }, [])
+  useEffect(() => { carica() }, [profilo])
 
   const carica = async () => {
     setLoading(true)
-    const { data: cl } = await supabase.from('classi').select(`
+
+    let q = supabase.from('classi').select(`
       id, nome, anno_cammino, giorno, attiva, note,
       classi_catechisti(catechista_id, profili(nome, cognome))
     `).eq('attiva', true).order('nome')
 
+    if (profilo?.ruolo === 'catechista') {
+      const { data: cc } = await supabase.from('classi_catechisti')
+        .select('classe_id').eq('catechista_id', profilo.id)
+      const ids = (cc || []).map(x => x.classe_id)
+      if (ids.length > 0) q = q.in('id', ids)
+      else { setClassi([]); setCatechisti([]); setLoading(false); return }
+    }
+
+    const { data: cl } = await q
     const { data: cat } = await supabase.from('profili')
       .select('id, nome, cognome').eq('ruolo', 'catechista').eq('attivo', true).order('cognome')
 
