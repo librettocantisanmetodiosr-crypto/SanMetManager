@@ -69,8 +69,14 @@ export function AuthProvider({ children }) {
     setProfilo(null)
   }
 
+  const tuttiRuoli = profilo
+    ? [profilo.ruolo, ...(profilo.ruoli_extra || [])].filter(Boolean)
+    : []
+
+  const hasRole = (r) => tuttiRuoli.includes(r)
+
   return (
-    <AuthContext.Provider value={{ user, profilo, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, profilo, tuttiRuoli, hasRole, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

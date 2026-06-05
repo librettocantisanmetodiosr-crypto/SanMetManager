@@ -6,9 +6,9 @@ import { useToast } from '../../hooks/useToast'
 const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'' }
 
 export default function Bambini() {
-  const { profilo } = useAuth()
+  const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isAdmin = ['admin','parroco','segreteria'].includes(profilo?.ruolo)
+  const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
   const [bambini, setBambini] = useState([])
   const [classi, setClassi] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +32,7 @@ export default function Bambini() {
       .select('id, nome, cognome, data_nascita, indirizzo, telefono1, telefono2, note, classe_id, classi(nome)')
       .eq('attivo', true).order('cognome')
 
-    if (profilo?.ruolo === 'catechista') {
+    if (!isAdmin && tuttiRuoli.includes('catechista')) {
       const { data: cc } = await supabase.from('classi_catechisti').select('classe_id').eq('catechista_id', profilo.id)
       const ids = (cc || []).map(x => x.classe_id)
       if (ids.length > 0) q = q.in('classe_id', ids)

@@ -4,9 +4,9 @@ import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 
 export default function Presenze() {
-  const { profilo } = useAuth()
+  const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isAdmin = ['admin','parroco','segreteria'].includes(profilo?.ruolo)
+  const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
 
   const [classi, setClassi] = useState([])
   const [date, setDate] = useState([])
@@ -25,7 +25,7 @@ export default function Presenze() {
 
   const caricaClassi = async () => {
     let q = supabase.from('classi').select('id, nome').eq('attiva', true).order('nome')
-    if (profilo?.ruolo === 'catechista') {
+    if (!isAdmin && tuttiRuoli.includes('catechista')) {
       const { data: cc } = await supabase.from('classi_catechisti').select('classe_id').eq('catechista_id', profilo.id)
       const ids = cc?.map(x => x.classe_id) || []
       // Supplenze per oggi: trova prima l'id della data di oggi, poi le supplenze associate
@@ -44,7 +44,11 @@ export default function Presenze() {
         sup?.forEach(x => supIds.push(x.classe_id))
       }
       const tuttiIds = [...new Set([...ids, ...supIds])]
-      if (tuttiIds.length > 0) q = q.in('id', tuttiIds)
+      if (tuttiIds.length > 0) {
+        q = q.in('id', tuttiIds)
+      } else {
+        setClassi([]); return
+      }
     }
     const { data } = await q
     setClassi(data || [])

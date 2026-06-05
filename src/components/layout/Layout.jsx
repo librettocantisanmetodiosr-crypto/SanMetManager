@@ -5,21 +5,20 @@ import { useAuth } from '../../lib/auth'
 const SEZIONI = [
   {
     key: 'catechismo', label: 'Catechismo', icon: '📚', color: 'var(--primary)',
-    ruoli: ['admin','parroco','segreteria','catechista'],
+    ruoli: ['admin','parroco','segreteria','catechista','responsabile'],
     voci: [
       { path: '/catechismo/classi',    label: 'Classi',    icon: '🏫' },
       { path: '/catechismo/bambini',   label: 'Bambini',   icon: '👦' },
       { path: '/catechismo/presenze',  label: 'Presenze',  icon: '✅' },
       { path: '/catechismo/report',    label: 'Report',    icon: '📊' },
-      { path: '/catechismo/date',      label: 'Date',      icon: '📅', ruoli: ['admin','parroco','segreteria'] },
-      { path: '/catechismo/supplenze', label: 'Supplenze', icon: '🔄', ruoli: ['admin','parroco','segreteria'] },
-      { path: '/catechismo/utenti',    label: 'Utenti',    icon: '👤', ruoli: ['admin','parroco','segreteria'] },
+      { path: '/catechismo/date',      label: 'Date',      icon: '📅', ruoli: ['admin','parroco','segreteria','responsabile'] },
+      { path: '/catechismo/supplenze', label: 'Supplenze', icon: '🔄', ruoli: ['admin','parroco','segreteria','responsabile'] },
       { path: '/bacheca',              label: 'Bacheca',   icon: '📌' },
     ]
   },
   {
     key: 'comitato', label: 'Comitato', icon: '📋', color: 'var(--blue)',
-    ruoli: ['admin','parroco','comitato'],
+    ruoli: ['admin','parroco','comitato','responsabile'],
     voci: [
       { path: '/comitato/calendario', label: 'Calendario', icon: '🗓️' },
       { path: '/comitato/lettere',    label: 'Lettere',    icon: '📄' },
@@ -28,36 +27,40 @@ const SEZIONI = [
   },
   {
     key: 'coro', label: 'Coro', icon: '🎵', color: 'var(--gold)',
-    ruoli: ['admin','parroco','responsabile_coro','corista'],
+    ruoli: ['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista','responsabile'],
     voci: [
       { path: '/coro/canti',   label: 'Canti',   icon: '🎶' },
-      { path: '/coro/coristi', label: 'Coristi', icon: '🎤', ruoli: ['admin','parroco','responsabile_coro'] },
+      { path: '/coro/coristi', label: 'Coristi', icon: '🎤', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
     ]
   },
   {
     key: 'neo', label: 'Neocatec.', icon: '✝️', color: 'var(--red)',
-    ruoli: ['admin','parroco','neocatecumenale','responsabile_neo'],
+    ruoli: ['admin','parroco','neocatecumenale','responsabile_neo','responsabile'],
     voci: [
       { path: '/neo/comunita', label: 'Comunità', icon: '🕊️' },
       { path: '/neo/stanze',   label: 'Stanze',   icon: '🚪' },
       { path: '/neo/avvisi',   label: 'Avvisi',   icon: '📢' },
     ]
   },
+  {
+    key: 'admin', label: 'Amministrazione', icon: '⚙️', color: 'var(--gray-700)',
+    ruoli: ['admin','parroco','segreteria','responsabile'],
+    voci: [
+      { path: '/admin/utenti', label: 'Utenti', icon: '👤' },
+    ]
+  },
 ]
 
 export default function Layout() {
-  const { profilo, logout } = useAuth()
+  const { profilo, tuttiRuoli, logout } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
-  const ruolo = profilo?.ruolo || ''
-
-  // Admin e parroco vedono tutto
   const canSee = (ruoli) => {
     if (!ruoli) return true
-    if (ruolo === 'admin' || ruolo === 'parroco') return true
-    return ruoli.includes(ruolo)
+    if (['admin', 'parroco', 'responsabile'].some(r => tuttiRuoli.includes(r))) return true
+    return ruoli.some(r => tuttiRuoli.includes(r))
   }
 
   const sezioniVisibili = SEZIONI.filter(s => canSee(s.ruoli))
@@ -144,7 +147,7 @@ export default function Layout() {
               <div style={{ fontSize:'0.78rem', opacity:0.8, marginTop:2 }}>@{profilo?.username || '...'}</div>
               <div style={{ marginTop:6 }}>
                 <span style={{ background:'rgba(255,255,255,0.2)', padding:'2px 10px', borderRadius:20, fontSize:'0.72rem', fontWeight:700 }}>
-                  {ruolo.toUpperCase() || '...'}
+                  {(profilo?.ruolo || '...').toUpperCase()}
                 </span>
               </div>
             </div>

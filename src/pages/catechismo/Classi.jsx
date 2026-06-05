@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 
 const vuota = { nome: '', anno_cammino: '', giorno: 'Sabato', note: '' }
 
 export default function Classi() {
+  const { profilo, tuttiRuoli } = useAuth()
+  const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
   const { toast, ToastContainer } = useToast()
   const [classi, setClassi] = useState([])
   const [catechisti, setCatechisti] = useState([])
@@ -14,20 +17,36 @@ export default function Classi() {
   const [selectedCatechisti, setSelectedCatechisti] = useState([])
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { carica() }, [])
+  useEffect(() => { carica() }, [profilo])
 
   const carica = async () => {
     setLoading(true)
-    const { data: cl } = await supabase.from('classi').select(`
+
+    let q = supabase.from('classi').select(`
       id, nome, anno_cammino, giorno, attiva, note,
       classi_catechisti(catechista_id, profili(nome, cognome))
     `).eq('attiva', true).order('nome')
 
-    const { data: cat } = await supabase.from('profili')
-      .select('id, nome, cognome').eq('ruolo', 'catechista').eq('attivo', true).order('cognome')
+    if (!isAdmin && tuttiRuoli.includes('catechista')) {
+      const { data: cc } = await supabase.from('classi_catechisti')
+        .select('classe_id').eq('catechista_id', profilo.id)
+      const ids = (cc || []).map(x => x.classe_id)
+      if (ids.length > 0) q = q.in('id', ids)
+      else { setClassi([]); setCatechisti([]); setLoading(false); return }
+    }
+
+    const { data: cl } = await q
+
+    // Catechisti assignable = ruolo catechista/responsabile OR ruoli_extra includes catechista
+    const { data: tutti } = await supabase.from('profili')
+      .select('id, nome, cognome, ruolo, ruoli_extra')
+      .eq('attivo', true).order('cognome')
+    const catOptions = (tutti || []).filter(p =>
+      p.ruolo === 'catechista' || p.ruolo === 'responsabile' || (p.ruoli_extra || []).includes('catechista')
+    )
 
     setClassi(cl || [])
-    setCatechisti(cat || [])
+    setCatechisti(catOptions)
     setLoading(false)
   }
 
@@ -64,7 +83,6 @@ export default function Classi() {
       classeId = modal.id
     }
 
-    // Sync catechisti: delete all existing, re-insert selected
     await supabase.from('classi_catechisti').delete().eq('classe_id', classeId)
     if (selectedCatechisti.length > 0) {
       const rows = selectedCatechisti.map(cid => ({ classe_id: classeId, catechista_id: cid }))
@@ -90,7 +108,7 @@ export default function Classi() {
       <ToastContainer />
       <div className="flex items-center justify-between mb-4">
         <h1>🏫 Classi</h1>
-        <button className="btn btn-primary btn-sm" onClick={apriNuova}>＋ Nuova</button>
+        {isAdmin && <button className="btn btn-primary btn-sm" onClick={apriNuova}>＋ Nuova</button>}
       </div>
 
       {loading ? (
@@ -106,10 +124,12 @@ export default function Classi() {
                 <div className="card-body">
                   <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
                     <h3>{c.nome}</h3>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-outline btn-sm" onClick={() => apriModifica(c)}>✏️</button>
-                      <button className="btn btn-red btn-sm" onClick={() => elimina(c.id)}>🗑</button>
-                    </div>
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => apriModifica(c)}>✏️</button>
+                        <button className="btn btn-red btn-sm" onClick={() => elimina(c.id)}>🗑</button>
+                      </div>
+                    )}
                   </div>
                   <div className="text-sm text-muted">{c.anno_cammino && <span>Anno: {c.anno_cammino} · </span>}{c.giorno}</div>
                   <div className="text-sm" style={{ marginTop: 4 }}>👤 {cats}</div>
