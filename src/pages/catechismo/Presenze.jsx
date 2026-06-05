@@ -28,12 +28,8 @@ export default function Presenze() {
     if (profilo?.ruolo === 'catechista') {
       const { data: cc } = await supabase.from('classi_catechisti').select('classe_id').eq('catechista_id', profilo.id)
       const ids = cc?.map(x => x.classe_id) || []
-      // Supplenze per oggi: trova prima l'id della data di oggi, poi le supplenze associate
       const oggi = new Date().toISOString().split('T')[0]
-      const { data: dateOggi } = await supabase
-        .from('date_catechismo')
-        .select('id')
-        .eq('data', oggi)
+      const { data: dateOggi } = await supabase.from('date_catechismo').select('id').eq('data', oggi)
       const todayDateId = dateOggi?.[0]?.id
       const supIds = []
       if (todayDateId) {
@@ -44,7 +40,11 @@ export default function Presenze() {
         sup?.forEach(x => supIds.push(x.classe_id))
       }
       const tuttiIds = [...new Set([...ids, ...supIds])]
-      if (tuttiIds.length > 0) q = q.in('id', tuttiIds)
+      if (tuttiIds.length > 0) {
+        q = q.in('id', tuttiIds)
+      } else {
+        setClassi([]); return
+      }
     }
     const { data } = await q
     setClassi(data || [])
