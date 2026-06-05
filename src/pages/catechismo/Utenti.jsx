@@ -8,16 +8,17 @@ import { emailConfigured } from '../../lib/emailConfig'
 import { logAzione } from '../../lib/logger'
 
 const RUOLI = [
-  { value: 'responsabile',     label: 'Responsabile',  badge: 'badge-red',   desc: 'Accesso completo + può avere ruoli multipli' },
-  { value: 'admin',            label: 'Admin',         badge: 'badge-red',   desc: 'Accesso completo a tutto' },
-  { value: 'parroco',          label: 'Parroco',       badge: 'badge-red',   desc: 'Accesso completo a tutto' },
-  { value: 'segreteria',       label: 'Segreteria',    badge: 'badge-blue',  desc: 'Gestione catechismo e utenti' },
-  { value: 'catechista',       label: 'Catechista',    badge: 'badge-green', desc: 'Presenze e bambini della propria classe' },
-  { value: 'comitato',         label: 'Comitato',      badge: 'badge-blue',  desc: 'Calendario, lettere, rubrica' },
-  { value: 'responsabile_coro',label: 'Resp. Coro',    badge: 'badge-gold',  desc: 'Gestione canti e coristi' },
-  { value: 'corista',          label: 'Corista',       badge: 'badge-gold',  desc: 'Visualizza canti e lancia dal responsabile' },
-  { value: 'responsabile_neo', label: 'Resp. Neo.',    badge: 'badge-blue',  desc: 'Gestione comunità neocatecumenali' },
-  { value: 'neocatecumenale',  label: 'Neocatec.',     badge: 'badge-gray',  desc: 'Comunità, stanze, avvisi' },
+  { value: 'responsabile',         label: 'Responsabile',    badge: 'badge-red',   desc: 'Accesso completo + può avere ruoli multipli' },
+  { value: 'admin',                label: 'Admin',           badge: 'badge-red',   desc: 'Accesso completo a tutto' },
+  { value: 'parroco',              label: 'Parroco',         badge: 'badge-red',   desc: 'Accesso completo a tutto' },
+  { value: 'segreteria',           label: 'Segreteria',      badge: 'badge-blue',  desc: 'Gestione catechismo e utenti' },
+  { value: 'catechista',           label: 'Catechista',      badge: 'badge-green', desc: 'Presenze e bambini della propria classe' },
+  { value: 'responsabile_comitato',label: 'Resp. Comitato',  badge: 'badge-blue',  desc: 'Calendario, lettere e rubrica comitato' },
+  { value: 'comitato',             label: 'Comitato',        badge: 'badge-gray',  desc: 'Solo bacheca e calendario (sola lettura)' },
+  { value: 'responsabile_coro',    label: 'Resp. Coro',      badge: 'badge-gold',  desc: 'Gestione canti e coristi' },
+  { value: 'corista',              label: 'Corista',         badge: 'badge-gold',  desc: 'Visualizza canti' },
+  { value: 'responsabile_neo',     label: 'Resp. Neo.',      badge: 'badge-blue',  desc: 'Gestione comunità neocatecumenali' },
+  { value: 'neocatecumenale',      label: 'Neocatec.',       badge: 'badge-gray',  desc: 'Comunità, stanze, avvisi' },
 ]
 
 const RUOLI_RISERVATI = ['admin', 'parroco']
