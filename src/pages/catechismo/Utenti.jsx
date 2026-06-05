@@ -495,6 +495,20 @@ export default function Utenti() {
         const testo = pwdCondivisione
           ? `Ciao ${u.nome}! 👋\n\nEcco i tuoi dati di accesso a SanMetManager:\n\n🔗 Link: ${link}\n👤 Username: ${u.username}\n🔑 Password: ${pwdCondivisione}\n\nParrocchia San Metodio – Siracusa`
           : `Ciao ${u.nome}! 👋\n\nEcco i tuoi dati di accesso a SanMetManager:\n\n🔗 Link: ${link}\n👤 Username: ${u.username}\n\nParrocchia San Metodio – Siracusa`
+
+        // Pulisce il numero e aggiunge prefisso italiano se mancante
+        const pulisciTel = (tel) => {
+          if (!tel) return ''
+          let t = tel.replace(/[\s\-().+]/g, '')
+          if (t.startsWith('0')) t = '39' + t.slice(1)
+          else if (!t.startsWith('39')) t = '39' + t
+          return t
+        }
+        const waPhone = pulisciTel(u.telefono)
+        const waUrl = waPhone
+          ? `https://wa.me/${waPhone}?text=${encodeURIComponent(testo)}`
+          : `https://wa.me/?text=${encodeURIComponent(testo)}`
+
         return (
           <div className="modal-overlay" onClick={() => setModalCondivisione(null)}>
             <div className="modal" onClick={e => e.stopPropagation()}>
@@ -511,6 +525,17 @@ export default function Utenti() {
                   <span style={{ color: 'var(--gray-500)' }}>Link app: </span>
                   <strong style={{ fontSize: '0.82rem' }}>{link}</strong>
                 </div>
+                {u.telefono && (
+                  <div className="text-sm" style={{ marginTop: 4 }}>
+                    <span style={{ color: 'var(--gray-500)' }}>Telefono: </span>
+                    <strong>{u.telefono}</strong>
+                  </div>
+                )}
+                {!u.telefono && (
+                  <div className="text-xs" style={{ color: 'var(--gray-400)', marginTop: 4 }}>
+                    ⚠️ Nessun telefono — WhatsApp aprirà senza numero precompilato
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -538,7 +563,7 @@ export default function Utenti() {
                 <button
                   className="btn btn-outline btn-block"
                   style={{ background: '#25D366', color: '#fff', borderColor: '#25D366' }}
-                  onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(testo)}`)}
+                  onClick={() => window.open(waUrl)}
                 >💬 WhatsApp</button>
                 <button className="btn btn-primary btn-block" onClick={() => setModalCondivisione(null)}>OK</button>
               </div>
