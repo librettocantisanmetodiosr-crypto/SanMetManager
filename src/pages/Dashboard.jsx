@@ -53,17 +53,24 @@ export default function Dashboard() {
   return (
     <div style={{ padding: 16 }}>
 
-      {/* Greeting */}
+      {/* Greeting con sfondo chiesa */}
       <div style={{
-        borderRadius: 14, marginBottom: 20, padding: '18px 20px',
-        background: 'linear-gradient(135deg, var(--primary) 0%, var(--blue) 100%)',
-        color: '#fff',
+        borderRadius: 16, marginBottom: 20, overflow: 'hidden',
+        position: 'relative', minHeight: 120,
+        backgroundImage: 'url(/chiesa-drone.jpg)',
+        backgroundSize: 'cover', backgroundPosition: 'center 55%',
       }}>
-        <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>
-          {saluto}, {profilo?.nome || 'benvenuto'}
-        </div>
-        <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: 3 }}>
-          {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(135deg, rgba(7,82,50,0.82) 0%, rgba(20,50,100,0.75) 100%)',
+        }} />
+        <div style={{ position: 'relative', zIndex: 1, padding: '22px 20px', color: '#fff' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 3 }}>
+            {saluto}, {profilo?.nome || 'benvenuto'}
+          </div>
+          <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+            {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
         </div>
       </div>
 
