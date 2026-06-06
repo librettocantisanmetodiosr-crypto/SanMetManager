@@ -227,34 +227,40 @@ function pulisciTestoOcr(raw) {
   }, []).join('\n').trim()
 }
 
-let _pdfjsLoaded = false
-function loadPdfJs() {
-  return new Promise((resolve, reject) => {
-    if (_pdfjsLoaded && window.pdfjsLib) { resolve(window.pdfjsLib); return }
-    const s = document.createElement('script')
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
-    s.onload = () => {
-      _pdfjsLoaded = true
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-      resolve(window.pdfjsLib)
-    }
-    s.onerror = () => reject(new Error('pdf.js non caricato'))
-    document.head.appendChild(s)
-  })
+let _pdfjsLib = null
+
+async function getPdfjsLib() {
+  if (_pdfjsLib) return _pdfjsLib
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf')
+  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf-worker.min.js`
+  _pdfjsLib = pdfjs
+  return pdfjs
 }
 
 async function renderPdfFirstPage(file) {
-  const pdfjs = await loadPdfJs()
+  const pdfjs = await getPdfjsLib()
   const ab = await file.arrayBuffer()
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(ab) }).promise
+  if (!ab || ab.byteLength === 0) throw new Error('Il file PDF sembra vuoto o corrotto')
+  const typedArray = new Uint8Array(ab)
+  const loadingTask = pdfjs.getDocument({ data: typedArray })
+  const pdf = await loadingTask.promise
+  if (pdf.numPages === 0) throw new Error('Il PDF non contiene pagine')
   const page = await pdf.getPage(1)
   const viewport = page.getViewport({ scale: 2.5 })
   const canvas = document.createElement('canvas')
   canvas.width = viewport.width
   canvas.height = viewport.height
-  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
-  return canvas
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas non disponibile nel browser')
+  const renderTask = page.render({ canvasContext: ctx, viewport })
+  await renderTask.promise
+  // Converti in JPEG blob — più affidabile del canvas element per Tesseract worker
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) reject(new Error('Conversione pagina PDF in immagine fallita'))
+      else resolve(blob)
+    }, 'image/jpeg', 0.92)
+  })
 }
 
 export default function Canti() {
@@ -430,8 +436,10 @@ export default function Canti() {
     try {
       let imageSource = ocrFile
       if (ocrFile.type === 'application/pdf') {
-        setOcrStatus('Elaborazione PDF…')
+        setOcrStatus('Rendering PDF…')
+        setOcrProgress(2)
         imageSource = await renderPdfFirstPage(ocrFile)
+        setOcrStatus('PDF pronto — avvio OCR…')
       }
       setOcrStatus('Avvio motore OCR…')
       const { createWorker } = await import('tesseract.js')
