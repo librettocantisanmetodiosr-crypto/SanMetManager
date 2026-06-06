@@ -193,9 +193,10 @@ function isChordToken(token) {
 
 function isChordLine(line) {
   const tokens = line.trim().split(/\s+/).filter(Boolean)
-  if (tokens.length < 2 || tokens.length > 16) return false
+  if (tokens.length < 1 || tokens.length > 16) return false
   const chords = tokens.filter(isChordToken)
-  return chords.length / tokens.length >= 0.65
+  // Almeno 1 accordo e ≥60% dei token sono accordi
+  return chords.length >= 1 && chords.length / tokens.length >= 0.60
 }
 
 const SEZIONE_OCR_RE = /^(ritornello|strofa\s*\d*|bridge|intro|coda|fine|preludio|interludio|verso\s*\d*|refrain|chorus|verse\s*\d*|intermezzo)\b/i
@@ -207,19 +208,75 @@ function isSectionLine(line) {
   return false
 }
 
+// Unisce una riga di accordi con la riga di testo successiva
+// usando le posizioni colonna per associare ogni accordo alla parola giusta
+function mergeChordAndLyric(chordLine, lyricLine) {
+  const chords = []
+  const re = /\S+/g
+  let m
+  while ((m = re.exec(chordLine)) !== null) {
+    if (isChordToken(m[0])) chords.push({ chord: m[0], col: m.index })
+  }
+  if (chords.length === 0) return lyricLine.trim()
+
+  // Estrai parole con posizione dalla riga lirica
+  const words = []
+  const wre = /\S+/g
+  while ((m = wre.exec(lyricLine)) !== null) {
+    words.push({ word: m[0], start: m.index })
+  }
+  if (words.length === 0) {
+    return chords.map(c => `[${c.chord}]`).join(' ')
+  }
+
+  // Per ogni accordo trova la parola più vicina (per colonna)
+  const wordChords = new Map()
+  for (const { chord, col } of chords) {
+    let closest = 0, minDist = Infinity
+    for (let i = 0; i < words.length; i++) {
+      const dist = Math.abs(words[i].start - col)
+      if (dist < minDist) { minDist = dist; closest = i }
+    }
+    if (!wordChords.has(closest)) wordChords.set(closest, [])
+    wordChords.get(closest).push(chord)
+  }
+
+  // Ricostruisci la riga con gli accordi inline [Accordo]parola
+  return words.map((w, i) => {
+    const prefix = (wordChords.get(i) || []).map(c => `[${c}]`).join('')
+    return prefix + w.word
+  }).join(' ')
+}
+
 function pulisciTestoOcr(raw) {
   const linee = raw.replace(/\r\n/g, '\n').split('\n')
   const out = []
-  for (const linea of linee) {
-    const t = linea.trim()
-    if (!t) { out.push(''); continue }
-    if (isChordLine(t)) continue
+  let i = 0
+  while (i < linee.length) {
+    const t = linee[i].trim()
+    if (!t) { out.push(''); i++; continue }
     if (isSectionLine(t)) {
       const nome = t.replace(/:+\s*$/, '').trim()
       out.push(`## ${nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase()}`)
+      i++; continue
+    }
+    if (isChordLine(t)) {
+      // Cerca la prossima riga non vuota da unire
+      let j = i + 1
+      while (j < linee.length && !linee[j].trim()) j++
+      if (j < linee.length && !isChordLine(linee[j].trim()) && !isSectionLine(linee[j].trim())) {
+        // Unisci accordi + testo in un'unica riga con notazione [Accordo]
+        out.push(mergeChordAndLyric(linee[i], linee[j]))
+        i = j + 1
+      } else {
+        // Nessuna riga di testo da unire — converti accordi in notazione inline
+        out.push(t.split(/\s+/).filter(isChordToken).map(c => `[${c}]`).join(' '))
+        i++
+      }
       continue
     }
     out.push(t)
+    i++
   }
   return out.reduce((acc, l) => {
     if (l === '' && acc.length > 0 && acc[acc.length - 1] === '') return acc
