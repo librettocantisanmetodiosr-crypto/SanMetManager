@@ -19,7 +19,6 @@ const MOMENTO_COLOR = {
   'Mariano':'#db2777','Altro':'#6b7280',
 }
 
-// Toolbar accordi organizzata a tab
 const ACCORDI_GRUPPI = [
   { label:'Magg.', col:'#1a6b3c',  list:['Do','Re','Mi','Fa','Sol','La','Si'] },
   { label:'Min.',  col:'#1565c0',  list:['Dom','Rem','Mim','Fam','Solm','Lam','Sim'] },
@@ -30,7 +29,6 @@ const ACCORDI_GRUPPI = [
 // ── Trasposizione ────────────────────────────────────────────────
 const SCALA = ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si']
 const BEMOLLI = { 'Sib':'La#','Mib':'Re#','Lab':'Sol#','Reb':'Do#','Solb':'Fa#' }
-// radici ordinate dalla più lunga per evitare match parziale
 const RADICI_ORDER = [...Object.keys(BEMOLLI),'Sol#','Do#','Re#','Fa#','La#','Sol','Do','Re','Mi','Fa','La','Si']
   .sort((a,b) => b.length - a.length)
 
@@ -129,7 +127,6 @@ function TestoFormattato({ testo, fontSize = 15 }) {
           )
         }
 
-        // Parse accordi inline → blocchi {acc, txt}
         const parti = []
         const re = /\[([^\]]+)\]/g
         let last = 0, m
@@ -140,15 +137,14 @@ function TestoFormattato({ testo, fontSize = 15 }) {
         }
         if (last < riga.length) parti.push({ t:'txt', v: riga.slice(last) })
 
-        // Unisci ogni accordo al testo che lo segue
         const blocchi = []
         let pi = 0
         while (pi < parti.length) {
           if (parti[pi].t === 'acc') {
             const acc = parti[pi].v
-            let txt = '  '
+            let txt = '  '
             if (pi+1 < parti.length && parti[pi+1].t === 'txt') {
-              txt = parti[pi+1].v || '  '
+              txt = parti[pi+1].v || '  '
               pi += 2
             } else { pi++ }
             blocchi.push({ acc, txt })
@@ -180,6 +176,87 @@ function TestoFormattato({ testo, fontSize = 15 }) {
   )
 }
 
+// ── OCR helpers ─────────────────────────────────────────────────
+const CHORD_ROOTS_OCR = ['Sol#','Do#','Re#','Fa#','La#','Sib','Mib','Lab','Sol','Do','Re','Mi','Fa','La','Si']
+
+function isChordToken(token) {
+  const t = token.replace(/[^A-Za-z0-9#]/g, '')
+  if (t.length < 2 || t.length > 9) return false
+  for (const root of CHORD_ROOTS_OCR) {
+    if (t.toLowerCase().startsWith(root.toLowerCase())) {
+      const rest = t.slice(root.length)
+      return !rest || /^[mM7#b\d]*(maj|sus|dim|aug|add)?[\d]*$/.test(rest)
+    }
+  }
+  return false
+}
+
+function isChordLine(line) {
+  const tokens = line.trim().split(/\s+/).filter(Boolean)
+  if (tokens.length < 2 || tokens.length > 16) return false
+  const chords = tokens.filter(isChordToken)
+  return chords.length / tokens.length >= 0.65
+}
+
+const SEZIONE_OCR_RE = /^(ritornello|strofa\s*\d*|bridge|intro|coda|fine|preludio|interludio|verso\s*\d*|refrain|chorus|verse\s*\d*|intermezzo)\b/i
+
+function isSectionLine(line) {
+  const t = line.trim()
+  if (SEZIONE_OCR_RE.test(t)) return true
+  if (t.length <= 28 && t === t.toUpperCase() && /[A-ZÀÁÈÉÌÍÒÓÙÚ]{3,}/.test(t) && !/\d{3,}/.test(t)) return true
+  return false
+}
+
+function pulisciTestoOcr(raw) {
+  const linee = raw.replace(/\r\n/g, '\n').split('\n')
+  const out = []
+  for (const linea of linee) {
+    const t = linea.trim()
+    if (!t) { out.push(''); continue }
+    if (isChordLine(t)) continue
+    if (isSectionLine(t)) {
+      const nome = t.replace(/:+\s*$/, '').trim()
+      out.push(`## ${nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase()}`)
+      continue
+    }
+    out.push(t)
+  }
+  return out.reduce((acc, l) => {
+    if (l === '' && acc.length > 0 && acc[acc.length - 1] === '') return acc
+    return [...acc, l]
+  }, []).join('\n').trim()
+}
+
+let _pdfjsLoaded = false
+function loadPdfJs() {
+  return new Promise((resolve, reject) => {
+    if (_pdfjsLoaded && window.pdfjsLib) { resolve(window.pdfjsLib); return }
+    const s = document.createElement('script')
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+    s.onload = () => {
+      _pdfjsLoaded = true
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+      resolve(window.pdfjsLib)
+    }
+    s.onerror = () => reject(new Error('pdf.js non caricato'))
+    document.head.appendChild(s)
+  })
+}
+
+async function renderPdfFirstPage(file) {
+  const pdfjs = await loadPdfJs()
+  const ab = await file.arrayBuffer()
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(ab) }).promise
+  const page = await pdf.getPage(1)
+  const viewport = page.getViewport({ scale: 2.5 })
+  const canvas = document.createElement('canvas')
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
+  return canvas
+}
+
 export default function Canti() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
@@ -201,17 +278,26 @@ export default function Canti() {
   const [fontSize, setFontSize] = useState(15)
   const [transposeOffset, setTransposeOffset] = useState(0)
   const [tabAccordi, setTabAccordi] = useState(0)
-  // Editor click-to-chord
-  const [modoEditor, setModoEditor] = useState('testo') // 'testo' | 'accordi'
+  const [modoEditor, setModoEditor] = useState('testo')
   const [lineeParole, setLineeParole] = useState([])
   const [accordiMap, setAccordiMap] = useState({})
   const [wordAttiva, setWordAttiva] = useState(null)
 
   const [uploadingPdf, setUploadingPdf] = useState(null)
+
+  // OCR state
+  const [ocrFile, setOcrFile] = useState(null)
+  const [ocrRunning, setOcrRunning] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState(0)
+  const [ocrStatus, setOcrStatus] = useState('')
+  const [ocrPreviewUrl, setOcrPreviewUrl] = useState(null)
+  const [ocrResult, setOcrResult] = useState(null) // testo estratto in attesa di review
+
   const pdfInputRef = useRef(null)
   const pdfInputNuovoRef = useRef(null)
   const pdfTargetRef = useRef(null)
   const textareaRef = useRef(null)
+  const ocrInputRef = useRef(null)
 
   const [cerca, setCerca] = useState('')
   const [filtroMomento, setFiltroMomento] = useState('')
@@ -258,6 +344,11 @@ export default function Canti() {
     return () => document.removeEventListener('keydown', fn)
   }, [modal, vistaModal])
 
+  // Cleanup OCR preview URL
+  useEffect(() => {
+    return () => { if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl) }
+  }, [ocrPreviewUrl])
+
   const caricaCanti = async () => {
     const { data } = await supabase.from('canti').select('*').order('categoria').order('titolo')
     setCanti(data || [])
@@ -287,6 +378,11 @@ export default function Canti() {
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
   }
 
+  const resetOcrState = () => {
+    setOcrFile(null); setOcrRunning(false); setOcrProgress(0); setOcrStatus(''); setOcrResult(null)
+    if (ocrPreviewUrl) { URL.revokeObjectURL(ocrPreviewUrl); setOcrPreviewUrl(null) }
+  }
+
   const resetEditorState = () => {
     setModoEditor('testo'); setLineeParole([]); setAccordiMap({}); setWordAttiva(null)
     setShowPreview(false); setTabAccordi(0)
@@ -294,13 +390,14 @@ export default function Canti() {
 
   const apriNuovo = () => {
     setForm(vuotoForm); setTipoIns('testo'); setPdfFile(null)
-    resetEditorState(); setModal('nuovo')
+    resetEditorState(); resetOcrState(); setModal('nuovo')
   }
+
   const apriModifica = (c) => {
     setForm({ titolo:c.titolo||'', categoria:c.categoria||'', tonalita:c.tonalita||'',
       tempo_liturgico:c.tempo_liturgico||'', testo:c.testo||'' })
     setTipoIns(c.testo ? 'testo' : 'pdf')
-    setPdfFile(null); resetEditorState(); setModal(c)
+    setPdfFile(null); resetEditorState(); resetOcrState(); setModal(c)
   }
 
   const entraChordsMode = () => {
@@ -313,11 +410,69 @@ export default function Canti() {
     setForm(f => ({...f, testo})); setWordAttiva(null); setModoEditor('testo')
   }
 
+  const setOcrFileWithPreview = (file) => {
+    if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl)
+    setOcrFile(file)
+    setOcrProgress(0)
+    setOcrStatus('')
+    if (file?.type?.startsWith('image/')) {
+      setOcrPreviewUrl(URL.createObjectURL(file))
+    } else {
+      setOcrPreviewUrl(null)
+    }
+  }
+
+  const eseguiOcr = async () => {
+    if (!ocrFile) return
+    setOcrRunning(true)
+    setOcrProgress(0)
+    setOcrStatus('Inizializzazione…')
+    try {
+      let imageSource = ocrFile
+      if (ocrFile.type === 'application/pdf') {
+        setOcrStatus('Elaborazione PDF…')
+        imageSource = await renderPdfFirstPage(ocrFile)
+      }
+      setOcrStatus('Avvio motore OCR…')
+      const { createWorker } = await import('tesseract.js')
+      const worker = await createWorker('ita', 1, {
+        workerPath: `${process.env.PUBLIC_URL}/tesseract-worker.min.js`,
+        logger: m => {
+          if (m.status === 'loading tesseract core') setOcrStatus('Caricamento motore…')
+          if (m.status === 'loading language traineddata') setOcrStatus('Scaricamento lingua italiana… (solo la prima volta, ~15 MB)')
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.round(m.progress * 100))
+            setOcrStatus(`Riconoscimento testo… ${Math.round(m.progress * 100)}%`)
+          }
+        },
+      })
+      setOcrStatus('Riconoscimento in corso…')
+      const { data: { text } } = await worker.recognize(imageSource)
+      await worker.terminate()
+      const testo = pulisciTestoOcr(text)
+      setOcrResult(testo)
+      setOcrRunning(false)
+      setOcrStatus('')
+      toast('✓ OCR completato — controlla e correggi il testo, poi clicca "Usa questo testo"', 'success')
+    } catch (e) {
+      console.error('OCR error:', e)
+      toast('Errore OCR: ' + (e.message || 'sconosciuto'), 'error')
+      setOcrRunning(false)
+      setOcrStatus('')
+    }
+  }
+
+  const usaTestoOcr = () => {
+    setForm(f => ({ ...f, testo: ocrResult ?? '' }))
+    setTipoIns('testo')
+    resetOcrState()
+  }
+
   const salva = async () => {
     if (!form.titolo.trim()) return toast('Inserisci il titolo','error')
+    if (tipoIns === 'ocr') return toast('Prima completa la scansione OCR','error')
     if (tipoIns === 'pdf' && modal === 'nuovo' && !pdfFile) return toast('Seleziona un file PDF','error')
     setSaving(true)
-    // Se siamo in modalità accordi, ricostruiamo il testo prima di salvare
     const testoFinale = (tipoIns === 'testo' && modoEditor === 'accordi')
       ? ricostruisciTesto(lineeParole, accordiMap)
       : form.testo
@@ -454,6 +609,8 @@ export default function Canti() {
     <div style={{ padding:16 }}>
       <ToastContainer/>
       <input ref={pdfInputRef} type="file" accept="application/pdf" style={{display:'none'}} onChange={onPdfEsistente}/>
+      <input ref={ocrInputRef} type="file" accept="image/*,application/pdf" capture="environment" style={{display:'none'}}
+        onChange={e => { const f = e.target.files?.[0]; if(f) setOcrFileWithPreview(f) }}/>
 
       <div className="flex items-center justify-between mb-4">
         <h1>🎵 Canti</h1>
@@ -532,7 +689,6 @@ export default function Canti() {
           <div className="modal" style={{ maxHeight:'93vh' }} onClick={e => e.stopPropagation()}>
             <div className="modal-handle"/>
 
-            {/* Intestazione */}
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
               <div style={{ flex:1, marginRight:8 }}>
                 <h2 style={{ fontSize:'1.1rem', lineHeight:1.3, margin:0 }}>{vistaModal.titolo}</h2>
@@ -596,7 +752,6 @@ export default function Canti() {
               </div>
             )}
 
-            {/* Contenuto */}
             {!vistaPdf && vistaModal.testo ? (
               <div style={{ overflowY:'auto', maxHeight:'60vh', padding:'2px 4px' }}>
                 <TestoFormattato testo={testoVista} fontSize={fontSize}/>
@@ -624,19 +779,21 @@ export default function Canti() {
             <div className="modal-handle"/>
             <div className="modal-title">{modal === 'nuovo' ? 'Nuovo Canto' : 'Modifica Canto'}</div>
 
+            {/* Tipo inserimento — solo per nuovi canti */}
             {modal === 'nuovo' && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:16 }}>
                 {[
                   { val:'testo', icon:'✍️', label:'Scrivi testo', sub:'Parole e accordi' },
-                  { val:'pdf',   icon:'📄', label:'Carica PDF',   sub:'Scansione o file' },
+                  { val:'pdf',   icon:'📄', label:'Carica PDF',   sub:'File digitale' },
+                  { val:'ocr',   icon:'📷', label:'Scansiona',    sub:'Foto o immagine' },
                 ].map(opt => (
                   <div key={opt.val} onClick={() => setTipoIns(opt.val)}
-                    style={{ padding:'12px 10px', borderRadius:10, cursor:'pointer', textAlign:'center',
+                    style={{ padding:'10px 6px', borderRadius:10, cursor:'pointer', textAlign:'center',
                       border:`2px solid ${tipoIns===opt.val ? 'var(--primary)' : 'var(--gray-200)'}`,
                       background: tipoIns===opt.val ? 'var(--primary-bg)' : '#fff' }}>
-                    <div style={{ fontSize:'1.5rem', marginBottom:4 }}>{opt.icon}</div>
-                    <div style={{ fontWeight:800, fontSize:'0.82rem', color: tipoIns===opt.val ? 'var(--primary)' : 'var(--gray-700)' }}>{opt.label}</div>
-                    <div style={{ fontSize:'0.7rem', color:'var(--gray-500)', marginTop:2 }}>{opt.sub}</div>
+                    <div style={{ fontSize:'1.3rem', marginBottom:3 }}>{opt.icon}</div>
+                    <div style={{ fontWeight:800, fontSize:'0.75rem', color: tipoIns===opt.val ? 'var(--primary)' : 'var(--gray-700)' }}>{opt.label}</div>
+                    <div style={{ fontSize:'0.62rem', color:'var(--gray-500)', marginTop:2 }}>{opt.sub}</div>
                   </div>
                 ))}
               </div>
@@ -673,12 +830,101 @@ export default function Canti() {
               </select>
             </div>
 
+            {/* ── PANNELLO OCR ── */}
+            {tipoIns === 'ocr' && (
+              <div className="form-group">
+                <label className="form-label">Foto canto o PDF</label>
+                {!ocrFile ? (
+                  <div onClick={() => ocrInputRef.current?.click()}
+                    style={{ border:'2px dashed var(--gray-300)', borderRadius:10, padding:'28px 16px',
+                      textAlign:'center', cursor:'pointer', background:'#fafafa' }}>
+                    <div style={{ fontSize:'2.5rem', marginBottom:10 }}>📷</div>
+                    <div style={{ fontWeight:700, color:'var(--gray-700)', fontSize:'0.9rem' }}>Scatta una foto o seleziona un file</div>
+                    <div className="text-xs text-muted" style={{ marginTop:4 }}>JPG · PNG · WebP · PDF (scansiona pag. 1)</div>
+                  </div>
+                ) : (
+                  <div style={{ border:'1.5px solid var(--gray-200)', borderRadius:10, padding:14, background:'#fafafa' }}>
+                    {ocrPreviewUrl && (
+                      <img src={ocrPreviewUrl} alt="anteprima"
+                        style={{ width:'100%', maxHeight:180, objectFit:'contain', borderRadius:8, marginBottom:10 }}/>
+                    )}
+                    {ocrFile.type === 'application/pdf' && (
+                      <div style={{ textAlign:'center', padding:'12px 0', marginBottom:10 }}>
+                        <div style={{ fontSize:'2rem' }}>📄</div>
+                        <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--gray-700)', marginTop:4 }}>{ocrFile.name}</div>
+                        <div className="text-xs text-muted" style={{ marginTop:2 }}>Verrà scansionata la prima pagina</div>
+                      </div>
+                    )}
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                      <span style={{ flex:1, fontSize:'0.78rem', color:'var(--gray-500)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {ocrFile.name}
+                      </span>
+                      {!ocrRunning && (
+                        <button type="button" className="btn btn-ghost btn-sm"
+                          onClick={() => setOcrFileWithPreview(null)}>✕</button>
+                      )}
+                    </div>
+                    {ocrRunning ? (
+                      <div>
+                        <div style={{ background:'var(--gray-200)', borderRadius:8, height:8, marginBottom:8, overflow:'hidden' }}>
+                          <div style={{ width:`${Math.max(ocrProgress, 4)}%`, height:'100%', background:'var(--primary)', borderRadius:8, transition:'width 0.5s ease' }}/>
+                        </div>
+                        <div style={{ fontSize:'0.78rem', color:'var(--primary)', fontWeight:600, textAlign:'center' }}>
+                          {ocrStatus}
+                        </div>
+                      </div>
+                    ) : ocrResult !== null ? (
+                      /* ── Step review: modifica prima di importare ── */
+                      <div>
+                        <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--gray-600)', marginBottom:6 }}>
+                          ✏️ Rivedi e correggi il testo estratto:
+                        </div>
+                        <textarea
+                          className="form-control"
+                          rows={10}
+                          value={ocrResult}
+                          onChange={e => setOcrResult(e.target.value)}
+                          style={{ fontFamily:'monospace', fontSize:12, lineHeight:1.6, marginBottom:10 }}
+                        />
+                        <div style={{ display:'flex', gap:8 }}>
+                          <button className="btn btn-outline btn-block"
+                            onClick={() => { setOcrResult(null) }}>
+                            ↺ Ri-scansiona
+                          </button>
+                          <button className="btn btn-primary btn-block" onClick={usaTestoOcr}>
+                            ✓ Usa questo testo
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button className="btn btn-primary btn-block" onClick={eseguiOcr}>
+                        🔍 Avvia scansione OCR
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="text-xs text-muted" style={{ marginTop:8, lineHeight:1.6 }}>
+                  💡 Il testo verrà estratto automaticamente. Le righe di soli accordi vengono rimosse.
+                  Dopo la scansione, controlla il risultato e usa <strong>🎸 Accordi</strong> per aggiungere gli accordi.
+                  <br/>⏱ La prima volta scarica i dati lingua (~15 MB, poi in cache).
+                </div>
+              </div>
+            )}
+
+            {/* ── PANNELLO TESTO ── */}
             {tipoIns === 'testo' && (
               <div className="form-group">
-                {/* Header con toggle modo */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
                   <label className="form-label" style={{ margin:0 }}>Testo e accordi</label>
                   <div style={{ display:'flex', gap:6 }}>
+                    {/* Bottone OCR anche in modalità testo (per modifiche) */}
+                    {modoEditor === 'testo' && !showPreview && (
+                      <button type="button" className="btn btn-outline btn-sm"
+                        style={{ fontSize:'0.72rem', padding:'4px 8px' }}
+                        onClick={() => setTipoIns('ocr')}>
+                        📷 OCR
+                      </button>
+                    )}
                     {modoEditor === 'testo' && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowPreview(v=>!v)}>
                         {showPreview ? '✏️ Editor' : '👁 Anteprima'}
@@ -700,7 +946,6 @@ export default function Canti() {
                   </div>
                 </div>
 
-                {/* MODO TESTO */}
                 {modoEditor === 'testo' && !showPreview && (
                   <>
                     <div style={{ marginBottom:10 }}>
@@ -734,14 +979,12 @@ export default function Canti() {
                   </div>
                 )}
 
-                {/* MODO ACCORDI: click-to-place */}
                 {modoEditor === 'accordi' && (
                   <>
                     <div className="text-xs text-muted" style={{ marginBottom:8, padding:'6px 10px', background:'#e8f0fe', borderRadius:8, color:'#1565c0', fontWeight:600 }}>
                       Tocca una parola per aggiungere o cambiare l'accordo sopra di essa
                     </div>
 
-                    {/* Canvas testo con accordi cliccabili */}
                     <div style={{ overflowY:'auto', maxHeight:260, padding:'12px 10px', background:'#fafafa', borderRadius:10, border:'1.5px solid var(--gray-200)', marginBottom:10 }}>
                       {lineeParole.length === 0 ? (
                         <p className="text-sm text-muted">Nessun testo da mostrare.</p>
@@ -786,7 +1029,6 @@ export default function Canti() {
                       })}
                     </div>
 
-                    {/* Pannello scelta accordo */}
                     {wordAttiva ? (
                       <div style={{ background:'#fff', borderRadius:12, padding:12, border:'1.5px solid #1565c0', boxShadow:'0 4px 16px rgba(21,101,192,0.15)' }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
@@ -808,7 +1050,6 @@ export default function Canti() {
                             </button>
                           </div>
                         </div>
-                        {/* Tab */}
                         <div style={{ display:'flex', borderRadius:8, overflow:'hidden', border:'1.5px solid var(--gray-200)', marginBottom:8 }}>
                           {ACCORDI_GRUPPI.map((g, idx) => (
                             <button key={g.label} type="button" onClick={() => setTabAccordi(idx)}
@@ -844,6 +1085,7 @@ export default function Canti() {
               </div>
             )}
 
+            {/* ── PANNELLO PDF ── */}
             {tipoIns === 'pdf' && (
               <div className="form-group">
                 <label className="form-label">File PDF</label>
@@ -871,7 +1113,7 @@ export default function Canti() {
 
             <div style={{ display:'flex', gap:10, marginTop:12 }}>
               <button className="btn btn-outline btn-block" onClick={() => setModal(null)}>Annulla</button>
-              <button className="btn btn-primary btn-block" onClick={salva} disabled={saving}>
+              <button className="btn btn-primary btn-block" onClick={salva} disabled={saving || ocrRunning}>
                 {saving ? <><div className="spinner" style={{width:16,height:16,borderTopColor:'#fff'}}/> Salvataggio…</> : 'Salva'}
               </button>
             </div>
