@@ -265,8 +265,8 @@ function pulisciTestoOcr(raw) {
       let j = i + 1
       while (j < linee.length && !linee[j].trim()) j++
       if (j < linee.length && !isChordLine(linee[j].trim()) && !isSectionLine(linee[j].trim())) {
-        // Unisci accordi + testo in un'unica riga con notazione [Accordo]
-        out.push(mergeChordAndLyric(linee[i], linee[j]))
+        // Unisci accordi + testo (entrambi trimmati per allineare le posizioni colonna)
+        out.push(mergeChordAndLyric(t, linee[j].trim()))
         i = j + 1
       } else {
         // Nessuna riga di testo da unire — converti accordi in notazione inline
@@ -278,10 +278,12 @@ function pulisciTestoOcr(raw) {
     out.push(t)
     i++
   }
-  return out.reduce((acc, l) => {
-    if (l === '' && acc.length > 0 && acc[acc.length - 1] === '') return acc
-    return [...acc, l]
-  }, []).join('\n').trim()
+  const deduped = []
+  for (const l of out) {
+    if (l === '' && deduped.length > 0 && deduped[deduped.length - 1] === '') continue
+    deduped.push(l)
+  }
+  return deduped.join('\n').trim()
 }
 
 let _pdfjsReady = false
@@ -1194,7 +1196,7 @@ export default function Canti() {
             )}
 
             <div style={{ display:'flex', gap:10, marginTop:12 }}>
-              <button className="btn btn-outline btn-block" onClick={() => setModal(null)}>Annulla</button>
+              <button className="btn btn-outline btn-block" onClick={() => { resetOcrState(); setModal(null) }}>Annulla</button>
               <button className="btn btn-primary btn-block" onClick={salva} disabled={saving || ocrRunning}>
                 {saving ? <><div className="spinner" style={{width:16,height:16,borderTopColor:'#fff'}}/> Salvataggio…</> : 'Salva'}
               </button>

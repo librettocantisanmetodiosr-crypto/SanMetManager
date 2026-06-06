@@ -114,26 +114,38 @@ export default function Presenze() {
   }
 
   const togglePresenza = async (bambinoId, stato) => {
-    const nuovoStato = presenze[bambinoId] === stato ? '' : stato
+    const vecchioStato = presenze[bambinoId]
+    const nuovoStato = vecchioStato === stato ? '' : stato
     setPresenze(p => ({ ...p, [bambinoId]: nuovoStato }))
     if (!dataId) return
     setSavingIds(prev => new Set(prev).add(bambinoId))
-    if (nuovoStato) {
-      await supabase.from('presenze').upsert(
-        { bambino_id: bambinoId, data_id: dataId, stato: nuovoStato },
-        { onConflict: 'bambino_id,data_id' }
-      )
-    } else {
-      await supabase.from('presenze').delete()
-        .eq('bambino_id', bambinoId).eq('data_id', dataId)
+    try {
+      let error
+      if (nuovoStato) {
+        ;({ error } = await supabase.from('presenze').upsert(
+          { bambino_id: bambinoId, data_id: dataId, stato: nuovoStato },
+          { onConflict: 'bambino_id,data_id' }
+        ))
+      } else {
+        ;({ error } = await supabase.from('presenze').delete()
+          .eq('bambino_id', bambinoId).eq('data_id', dataId))
+      }
+      if (error) {
+        setPresenze(p => ({ ...p, [bambinoId]: vecchioStato }))
+        toast('Errore salvataggio', 'error')
+      }
+    } finally {
+      setSavingIds(prev => { const s = new Set(prev); s.delete(bambinoId); return s })
     }
-    setSavingIds(prev => { const s = new Set(prev); s.delete(bambinoId); return s })
   }
 
   const salvaMap = async (map) => {
     if (!classeId || !dataId || bambini.length === 0) return
     setSaving(true)
-    const rows = bambini.map(b => ({ bambino_id: b.id, data_id: dataId, stato: map[b.id] || 'A' }))
+    // Esclude esplicitamente le righe senza stato ('' o undefined)
+    const rows = bambini
+      .filter(b => map[b.id] === 'P' || map[b.id] === 'A')
+      .map(b => ({ bambino_id: b.id, data_id: dataId, stato: map[b.id] }))
     const { error } = await supabase.from('presenze').upsert(rows, { onConflict: 'bambino_id,data_id' })
     setSaving(false)
     if (error) toast('Errore nel salvataggio', 'error')
@@ -262,7 +274,7 @@ export default function Presenze() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => togglePresenza(b.id, 'P')}
-                    disabled={savingIds.has(b.id)}
+                    disabled={savingIds.has(b.id) || saving}
                     style={{
                       width: 40, height: 40, borderRadius: '50%', border: 'none',
                       fontWeight: 800, fontSize: savingIds.has(b.id) ? '0.6rem' : '0.9rem', cursor: 'pointer',
@@ -273,7 +285,7 @@ export default function Presenze() {
                   >{savingIds.has(b.id) ? '…' : 'P'}</button>
                   <button
                     onClick={() => togglePresenza(b.id, 'A')}
-                    disabled={savingIds.has(b.id)}
+                    disabled={savingIds.has(b.id) || saving}
                     style={{
                       width: 40, height: 40, borderRadius: '50%', border: 'none',
                       fontWeight: 800, fontSize: savingIds.has(b.id) ? '0.6rem' : '0.9rem', cursor: 'pointer',
