@@ -227,39 +227,56 @@ function pulisciTestoOcr(raw) {
   }, []).join('\n').trim()
 }
 
-let _pdfjsLib = null
+let _pdfjsReady = false
 
-async function getPdfjsLib() {
-  if (_pdfjsLib) return _pdfjsLib
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf')
-  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf-worker.min.js`
-  _pdfjsLib = pdfjs
-  return pdfjs
+function loadPdfjsScript() {
+  if (_pdfjsReady && window.pdfjsLib) return Promise.resolve(window.pdfjsLib)
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) {
+      _pdfjsReady = true
+      resolve(window.pdfjsLib)
+      return
+    }
+    const base = process.env.PUBLIC_URL || ''
+    const s = document.createElement('script')
+    s.src = `${base}/pdfjs-lib.js`
+    s.onload = () => {
+      if (!window.pdfjsLib) { reject(new Error('pdfjsLib non inizializzato dopo il caricamento')); return }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${base}/pdf-worker.min.js`
+      _pdfjsReady = true
+      resolve(window.pdfjsLib)
+    }
+    s.onerror = () => reject(new Error('Impossibile caricare il motore PDF locale'))
+    document.head.appendChild(s)
+  })
 }
 
 async function renderPdfFirstPage(file) {
-  const pdfjs = await getPdfjsLib()
+  const pdfjs = await loadPdfjsScript()
   const ab = await file.arrayBuffer()
-  if (!ab || ab.byteLength === 0) throw new Error('Il file PDF sembra vuoto o corrotto')
   const typedArray = new Uint8Array(ab)
-  const loadingTask = pdfjs.getDocument({ data: typedArray })
-  const pdf = await loadingTask.promise
-  if (pdf.numPages === 0) throw new Error('Il PDF non contiene pagine')
+  let pdf
+  try {
+    const task = pdfjs.getDocument({ data: typedArray })
+    pdf = await task.promise
+  } catch (e) {
+    throw new Error(`Impossibile leggere il PDF: ${e.message || e}`)
+  }
+  if (!pdf || pdf.numPages === 0) throw new Error('Il PDF non ha pagine leggibili')
   const page = await pdf.getPage(1)
   const viewport = page.getViewport({ scale: 2.5 })
   const canvas = document.createElement('canvas')
-  canvas.width = viewport.width
-  canvas.height = viewport.height
+  canvas.width = Math.round(viewport.width)
+  canvas.height = Math.round(viewport.height)
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas non disponibile nel browser')
-  const renderTask = page.render({ canvasContext: ctx, viewport })
-  await renderTask.promise
-  // Converti in JPEG blob — più affidabile del canvas element per Tesseract worker
+  if (!ctx) throw new Error('Canvas 2D non disponibile nel browser')
+  await page.render({ canvasContext: ctx, viewport }).promise
+  // Converti in JPEG blob — il canvas DOM non è trasferibile al web worker di Tesseract
   return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => {
-      if (!blob) reject(new Error('Conversione pagina PDF in immagine fallita'))
-      else resolve(blob)
-    }, 'image/jpeg', 0.92)
+    canvas.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error('Conversione canvas→JPEG fallita')),
+      'image/jpeg', 0.92
+    )
   })
 }
 
