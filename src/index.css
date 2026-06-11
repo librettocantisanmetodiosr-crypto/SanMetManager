@@ -208,3 +208,18 @@ hr { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
   .form-row { grid-template-columns: 1fr; }
   h1 { font-size: 1.15rem; }
 }
+
+/* Tablet+: modal centrato invece di bottom sheet */
+@media (min-width: 600px) {
+  .modal-overlay {
+    align-items: center;
+    padding: 16px;
+  }
+  .modal {
+    border-radius: 16px;
+    max-height: 88vh;
+  }
+  .modal-handle {
+    display: none;
+  }
+}

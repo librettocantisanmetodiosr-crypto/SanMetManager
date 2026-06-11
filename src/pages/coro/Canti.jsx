@@ -705,11 +705,12 @@ export default function Canti() {
     const col = MOMENTO_COLOR[c.categoria] || 'var(--gray-300)'
     const attivo = cantoAttivo === c.id
     return (
-      <div key={c.id} className="card" style={{ borderLeft:`3px solid ${attivo ? 'var(--primary)' : col}`, background: attivo ? '#f0faf4' : '#fff' }}>
+      <div key={c.id} className="card"
+        style={{ borderLeft:`3px solid ${attivo ? 'var(--primary)' : col}`, background: attivo ? '#f0faf4' : '#fff', cursor:'pointer' }}
+        onClick={() => { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo); setTransposeOffset(0) }}>
         <div className="card-body" style={{ padding:'11px 14px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ flex:1, cursor:'pointer', minWidth:0 }}
-              onClick={() => { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo); setTransposeOffset(0) }}>
+            <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontWeight:800, fontSize:'0.92rem', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.titolo}</div>
               <div style={{ display:'flex', gap:4, marginTop:4, flexWrap:'wrap' }}>
                 {c.tonalita && <span className="badge badge-gray" style={{ fontSize:'0.68rem' }}>{c.tonalita}</span>}
@@ -718,9 +719,9 @@ export default function Canti() {
                 {c.testo && <span className="badge badge-green" style={{ fontSize:'0.68rem' }}>✍️ Testo</span>}
               </div>
             </div>
-            <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+            <div style={{ display:'flex', gap:5, flexShrink:0 }} onClick={e => e.stopPropagation()}>
               {c.pdf_url && (
-                <a href={c.pdf_url} target="_blank" rel="noreferrer">
+                <a href={c.pdf_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
                   <button className="btn btn-outline btn-sm btn-icon">📄</button>
                 </a>
               )}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
 
@@ -198,7 +198,9 @@ export default function Layout() {
 
       {/* CONTENUTO PAGINA */}
       <main style={{ flex:1, paddingBottom:80 }}>
-        <Outlet />
+        <div style={{ maxWidth:720, margin:'0 auto', width:'100%' }}>
+          <Outlet />
+        </div>
       </main>
 
       {/* BOTTOM NAV */}
