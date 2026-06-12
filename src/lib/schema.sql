@@ -453,3 +453,71 @@ grant execute on function stats_presenze_classe(uuid) to authenticated;
 -- Esempio inserimento profilo admin dopo registrazione:
 -- insert into public.profili (id, username, nome, cognome, ruolo)
 -- values ('<uuid-from-auth>', 'marco.tarascio', 'Marco', 'Tarascio', 'admin');
+
+-- ═══════════════════════════════════════════════════
+-- SCALETTE (setlist per la messa)
+-- ═══════════════════════════════════════════════════
+
+create table if not exists public.scalette (
+  id uuid default uuid_generate_v4() primary key,
+  nome text not null,
+  data date,
+  note text,
+  autore_id uuid references public.profili(id) on delete cascade,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.scalette_canti (
+  id uuid default uuid_generate_v4() primary key,
+  scaletta_id uuid references public.scalette(id) on delete cascade,
+  canto_id uuid references public.canti(id) on delete cascade,
+  ordine int not null default 0,
+  unique(scaletta_id, canto_id)
+);
+
+alter table public.scalette enable row level security;
+alter table public.scalette_canti enable row level security;
+
+-- Tutti gli autenticati possono leggere le scalette
+create policy "scalette_select" on public.scalette
+  for select using (auth.role() = 'authenticated');
+
+-- Solo l'autore può inserire (con autore_id = proprio uid)
+create policy "scalette_insert" on public.scalette
+  for insert with check (auth.uid() = autore_id);
+
+-- Autore o admin/parroco/responsabile_coro possono modificare
+create policy "scalette_update" on public.scalette
+  for update using (
+    auth.uid() = autore_id
+    or exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro'))
+  );
+
+create policy "scalette_delete" on public.scalette
+  for delete using (
+    auth.uid() = autore_id
+    or exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro'))
+  );
+
+-- Tutti gli autenticati possono leggere i canti nelle scalette
+create policy "scalette_canti_select" on public.scalette_canti
+  for select using (auth.role() = 'authenticated');
+
+-- Solo autore della scaletta o admin può modificare i canti nella scaletta
+create policy "scalette_canti_write" on public.scalette_canti
+  for all using (
+    exists(
+      select 1 from public.scalette s
+      where s.id = scaletta_id
+        and (s.autore_id = auth.uid()
+          or exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro')))
+    )
+  )
+  with check (
+    exists(
+      select 1 from public.scalette s
+      where s.id = scaletta_id
+        and (s.autore_id = auth.uid()
+          or exists(select 1 from public.profili p where p.id = auth.uid() and p.ruolo in ('admin','parroco','responsabile_coro')))
+    )
+  );

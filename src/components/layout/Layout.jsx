@@ -29,8 +29,9 @@ const SEZIONI = [
     key: 'coro', label: 'Coro', icon: '🎵', color: 'var(--gold)',
     ruoli: ['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista','responsabile'],
     voci: [
-      { path: '/coro/canti',   label: 'Canti',   icon: '🎶' },
-      { path: '/coro/coristi', label: 'Coristi', icon: '🎤', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
+      { path: '/coro/canti',    label: 'Canti',    icon: '🎶' },
+      { path: '/coro/scalette', label: 'Scalette', icon: '🎼' },
+      { path: '/coro/coristi',  label: 'Coristi',  icon: '🎤', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
     ]
   },
   {

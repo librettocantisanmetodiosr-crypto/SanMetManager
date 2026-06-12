@@ -429,6 +429,11 @@ export default function Canti() {
   const [cerca, setCerca] = useState('')
   const [filtroMomento, setFiltroMomento] = useState('')
   const [filtroTempo, setFiltroTempo] = useState('')
+  const [preferiti, setPreferiti] = useState(new Set())
+  const [soloPreferiti, setSoloPreferiti] = useState(false)
+  const [modalAddScaletta, setModalAddScaletta] = useState(false)
+  const [scaletteList, setScalettaList] = useState([])
+  const [nuovaScalettaNome, setNuovaScalettaNome] = useState('')
 
   const cantiRef       = useRef([])
   const cantoAttivoRef = useRef(null)
@@ -437,6 +442,14 @@ export default function Canti() {
   useEffect(() => { cantoAttivoRef.current = cantoAttivo }, [cantoAttivo])
 
   useEffect(() => { caricaCanti(); caricaCantoAttivo() }, [])
+
+  useEffect(() => {
+    if (!profilo?.id) return
+    try {
+      const s = localStorage.getItem(`pref_${profilo.id}`)
+      setPreferiti(s ? new Set(JSON.parse(s)) : new Set())
+    } catch { setPreferiti(new Set()) }
+  }, [profilo?.id])
 
   useEffect(() => {
     const poll = async () => {
@@ -503,6 +516,42 @@ export default function Canti() {
     setTimeout(() => { lanciatoQuiRef.current = false }, 7000)
     if (stop) toast('Canto fermato', 'default')
     else toast(`🎵 ${canti.find(c => c.id === cantoId)?.titolo}`, 'success')
+  }
+
+  const togglePreferito = (id) => {
+    setPreferiti(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      if (profilo?.id) localStorage.setItem(`pref_${profilo.id}`, JSON.stringify([...next]))
+      return next
+    })
+  }
+
+  const loadScalette = async () => {
+    const { data } = await supabase.from('scalette').select('id, nome, data').order('created_at', { ascending: false })
+    setScalettaList(data || [])
+  }
+  const apriAddScaletta = () => { loadScalette(); setModalAddScaletta(true) }
+  const aggiungiAScaletta = async (scalettaId) => {
+    const { data: maxRow } = await supabase.from('scalette_canti')
+      .select('ordine').eq('scaletta_id', scalettaId).order('ordine', { ascending: false }).limit(1).maybeSingle()
+    const ordine = maxRow ? maxRow.ordine + 1 : 0
+    const { error } = await supabase.from('scalette_canti').insert({ scaletta_id: scalettaId, canto_id: vistaModal?.id, ordine })
+    if (error) {
+      if (error.code === '23505') toast('Canto già nella scaletta', 'error')
+      else toast('Errore: ' + error.message, 'error')
+      return
+    }
+    toast('Aggiunto alla scaletta ✓', 'success')
+    setModalAddScaletta(false); setNuovaScalettaNome('')
+  }
+  const creaNuovaEAggiungi = async () => {
+    if (!nuovaScalettaNome.trim()) return
+    const { data, error } = await supabase.from('scalette')
+      .insert({ nome: nuovaScalettaNome.trim(), autore_id: profilo?.id }).select('id').single()
+    if (error) { toast('Errore: ' + error.message, 'error'); return }
+    await aggiungiAScaletta(data.id)
   }
 
   const resetOcrState = () => {
@@ -681,8 +730,9 @@ export default function Canti() {
     setTimeout(() => { el.focus(); el.setSelectionRange(s+txt.length, s+txt.length) }, 0)
   }
 
-  const hasFilter = cerca || filtroMomento || filtroTempo
+  const hasFilter = cerca || filtroMomento || filtroTempo || soloPreferiti
   const cantiFiltrati = canti.filter(c => {
+    if (soloPreferiti && !preferiti.has(c.id)) return false
     if (cerca && !`${c.titolo} ${c.categoria||''}`.toLowerCase().includes(cerca.toLowerCase())) return false
     if (filtroMomento && c.categoria !== filtroMomento) return false
     if (filtroTempo && c.tempo_liturgico !== filtroTempo) return false
@@ -720,6 +770,11 @@ export default function Canti() {
               </div>
             </div>
             <div style={{ display:'flex', gap:5, flexShrink:0 }} onClick={e => e.stopPropagation()}>
+              <button className="btn btn-ghost btn-sm btn-icon"
+                style={{ color: preferiti.has(c.id) ? '#f59e0b' : 'var(--gray-300)', fontSize:'1.1rem', padding:'4px 5px' }}
+                onClick={() => togglePreferito(c.id)}>
+                {preferiti.has(c.id) ? '★' : '☆'}
+              </button>
               {c.pdf_url && (
                 <a href={c.pdf_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
                   <button className="btn btn-outline btn-sm btn-icon">📄</button>
@@ -796,12 +851,18 @@ export default function Canti() {
             </div>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <button onClick={() => setSoloPreferiti(p => !p)} className="btn btn-sm"
+              style={{ background: soloPreferiti ? '#f59e0b' : '#fff', color: soloPreferiti ? '#fff' : 'var(--gray-600)',
+                border:'1.5px solid', borderColor: soloPreferiti ? '#f59e0b' : 'var(--gray-200)',
+                flexShrink:0, fontWeight:800, fontSize:'0.8rem', padding:'6px 10px' }}>
+              {soloPreferiti ? '★' : '☆'} Preferiti
+            </button>
             <select className="form-control" style={{ fontSize:'0.78rem', padding:'6px 28px 6px 10px', flex:1 }}
               value={filtroTempo} onChange={e => setFiltroTempo(e.target.value)}>
-              <option value="">Tutti i tempi liturgici</option>
+              <option value="">Tutti i tempi</option>
               {TEMPI.map(t => <option key={t}>{t}</option>)}
             </select>
-            {hasFilter && <button className="btn btn-ghost btn-sm" onClick={() => { setCerca(''); setFiltroMomento(''); setFiltroTempo('') }}>✕ Reset</button>}
+            {hasFilter && <button className="btn btn-ghost btn-sm" onClick={() => { setCerca(''); setFiltroMomento(''); setFiltroTempo(''); setSoloPreferiti(false) }}>✕</button>}
           </div>
         </div>
       </div>
@@ -847,7 +908,18 @@ export default function Canti() {
                   {vistaModal.tempo_liturgico && <span className="badge badge-gold">{vistaModal.tempo_liturgico}</span>}
                 </div>
               </div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setVistaModal(null)}>✕</button>
+              <div style={{ display:'flex', gap:4, alignItems:'flex-start' }}>
+                <button className="btn btn-ghost btn-sm btn-icon"
+                  style={{ color: preferiti.has(vistaModal.id) ? '#f59e0b' : 'var(--gray-400)', fontSize:'1.2rem', padding:'4px 6px' }}
+                  onClick={() => togglePreferito(vistaModal.id)}>
+                  {preferiti.has(vistaModal.id) ? '★' : '☆'}
+                </button>
+                <button className="btn btn-ghost btn-sm btn-icon"
+                  style={{ color:'var(--gray-500)', fontSize:'1.1rem', padding:'4px 6px' }}
+                  title="Aggiungi a scaletta"
+                  onClick={apriAddScaletta}>📋</button>
+                <button className="btn btn-ghost btn-icon" onClick={() => setVistaModal(null)}>✕</button>
+              </div>
             </div>
 
             {vistaModal.testo && vistaModal.pdf_url && (
@@ -913,6 +985,44 @@ export default function Canti() {
             ) : (
               <p className="text-muted text-sm">Nessun testo o PDF disponibile.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ══ Modal AGGIUNGI A SCALETTA ══ */}
+      {modalAddScaletta && vistaModal && (
+        <div className="modal-overlay" onClick={() => { setModalAddScaletta(false); setNuovaScalettaNome('') }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle"/>
+            <div className="modal-title">Aggiungi a scaletta</div>
+            <div style={{ fontSize:'0.82rem', color:'var(--gray-500)', marginBottom:14, fontStyle:'italic' }}>{vistaModal.titolo}</div>
+            {scaletteList.length === 0 ? (
+              <p className="text-muted text-sm" style={{ textAlign:'center', marginBottom:12 }}>Nessuna scaletta ancora. Creane una qui sotto.</p>
+            ) : (
+              <div style={{ maxHeight:'40vh', overflowY:'auto', display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
+                {scaletteList.map(s => (
+                  <div key={s.id} className="card" style={{ cursor:'pointer' }} onClick={() => aggiungiAScaletta(s.id)}>
+                    <div className="card-body" style={{ padding:'10px 12px' }}>
+                      <div style={{ fontWeight:700, fontSize:'0.88rem' }}>{s.nome}</div>
+                      {s.data && <div style={{ fontSize:'0.7rem', color:'var(--gray-500)', marginTop:2 }}>{new Date(s.data).toLocaleDateString('it-IT')}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ borderTop:'1px solid var(--gray-200)', paddingTop:12 }}>
+              <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--gray-600)', marginBottom:8 }}>Crea nuova scaletta e aggiungi</div>
+              <div style={{ display:'flex', gap:8 }}>
+                <input className="form-control" style={{ fontSize:'0.85rem', flex:1 }}
+                  placeholder="Nome scaletta…"
+                  value={nuovaScalettaNome} onChange={e => setNuovaScalettaNome(e.target.value)}
+                  onKeyDown={e => { if(e.key==='Enter') creaNuovaEAggiungi() }}/>
+                <button className="btn btn-primary btn-sm" onClick={creaNuovaEAggiungi}
+                  disabled={!nuovaScalettaNome.trim()}>＋</button>
+              </div>
+            </div>
+            <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop:12 }}
+              onClick={() => { setModalAddScaletta(false); setNuovaScalettaNome('') }}>Chiudi</button>
           </div>
         </div>
       )}
