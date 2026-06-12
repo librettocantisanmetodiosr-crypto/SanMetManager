@@ -30,8 +30,9 @@ const SEZIONI = [
     key: 'coro', label: 'Coro', icon: '🎵', color: 'var(--gold)',
     ruoli: ['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista','responsabile'],
     voci: [
-      { path: '/coro/canti',   label: 'Canti',   icon: '🎶' },
-      { path: '/coro/coristi', label: 'Coristi', icon: '🎤', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
+      { path: '/coro/canti',    label: 'Canti',    icon: '🎶' },
+      { path: '/coro/scalette', label: 'Scalette', icon: '🎼' },
+      { path: '/coro/coristi',  label: 'Coristi',  icon: '🎤', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
     ]
   },
   {
@@ -207,7 +208,9 @@ export default function Layout() {
 
       {/* CONTENUTO PAGINA */}
       <main style={{ flex:1, paddingBottom:80 }}>
-        <Outlet />
+        <div style={{ maxWidth:720, margin:'0 auto', width:'100%' }}>
+          <Outlet />
+        </div>
       </main>
 
       {/* BOTTOM NAV */}

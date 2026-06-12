@@ -32,6 +32,7 @@ import ComRubrica from './pages/comitato/Rubrica'
 // Coro
 import CoroCanti from './pages/coro/Canti'
 import CoroCoristi from './pages/coro/Coristi'
+import CoroScalette from './pages/coro/Scalette'
 
 // Neocatecumenali
 import NeoComunit from './pages/neocatecumenali/Comunita'
@@ -76,8 +77,9 @@ function AppRoutes() {
         <Route path="comitato/lettere"    element={<ProtectedRoute ruoli={['admin','parroco','responsabile_comitato']}><ComLettere /></ProtectedRoute>} />
         <Route path="comitato/rubrica"    element={<ProtectedRoute ruoli={['admin','parroco','responsabile_comitato']}><ComRubrica /></ProtectedRoute>} />
         {/* Coro */}
-        <Route path="coro/canti"   element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista']}><CoroCanti /></ProtectedRoute>} />
-        <Route path="coro/coristi" element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro']}><CoroCoristi /></ProtectedRoute>} />
+        <Route path="coro/canti"    element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista']}><CoroCanti /></ProtectedRoute>} />
+        <Route path="coro/scalette" element={<CoroScalette />} />
+        <Route path="coro/coristi"  element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro']}><CoroCoristi /></ProtectedRoute>} />
         {/* Neocatecumenali */}
         <Route path="neo/comunita" element={<ProtectedRoute ruoli={['admin','parroco','neocatecumenale','responsabile_neo']}><NeoComunit /></ProtectedRoute>} />
         <Route path="neo/stanze"   element={<ProtectedRoute ruoli={['admin','parroco','neocatecumenale','responsabile_neo']}><NeoStanze /></ProtectedRoute>} />

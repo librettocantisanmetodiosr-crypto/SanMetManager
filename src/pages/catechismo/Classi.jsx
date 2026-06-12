@@ -38,15 +38,16 @@ export default function Classi() {
 
     const { data: cl } = await q
 
-    // Include responsabili e utenti con catechista come ruolo extra
+    // Catechisti assignable = ruolo catechista/responsabile OR ruoli_extra includes catechista
     const { data: tutti } = await supabase.from('profili')
-      .select('id, nome, cognome, ruolo, ruoli_extra').eq('attivo', true).order('cognome')
-    const cat = (tutti || []).filter(p =>
+      .select('id, nome, cognome, ruolo, ruoli_extra')
+      .eq('attivo', true).order('cognome')
+    const catOptions = (tutti || []).filter(p =>
       p.ruolo === 'catechista' || p.ruolo === 'responsabile' || (p.ruoli_extra || []).includes('catechista')
     )
 
     setClassi(cl || [])
-    setCatechisti(cat)
+    setCatechisti(catOptions)
     setLoading(false)
   }
 
@@ -83,7 +84,6 @@ export default function Classi() {
       classeId = modal.id
     }
 
-    // Sync catechisti: delete all existing, re-insert selected
     await supabase.from('classi_catechisti').delete().eq('classe_id', classeId)
     if (selectedCatechisti.length > 0) {
       const rows = selectedCatechisti.map(cid => ({ classe_id: classeId, catechista_id: cid }))
