@@ -809,7 +809,7 @@ export default function Canti() {
     <div style={{ padding:16 }}>
       <ToastContainer/>
       <input ref={pdfInputRef} type="file" accept="application/pdf" style={{display:'none'}} onChange={onPdfEsistente}/>
-      <input ref={ocrInputRef} type="file" accept="image/*,application/pdf" capture="environment" style={{display:'none'}}
+      <input ref={ocrInputRef} type="file" accept="image/*,application/pdf" style={{display:'none'}}
         onChange={e => { const f = e.target.files?.[0]; if(f) setOcrFileWithPreview(f) }}/>
 
       <div className="flex items-center justify-between mb-4">
@@ -1375,8 +1375,8 @@ export default function Canti() {
                   ) : (
                     <>
                       <div style={{ fontSize:'2rem', marginBottom:8 }}>⬆️</div>
-                      <div style={{ fontWeight:700, color:'var(--gray-700)', fontSize:'0.9rem' }}>Clicca per selezionare il PDF</div>
-                      <div className="text-xs text-muted" style={{ marginTop:4 }}>Max 20 MB</div>
+                      <div style={{ fontWeight:700, color:'var(--gray-700)', fontSize:'0.9rem' }}>Tocca per selezionare il PDF</div>
+                      <div className="text-xs text-muted" style={{ marginTop:4 }}>Max 20 MB · Su iPad scegli "Sfoglia" poi vai in "Su questo iPad → Libri"</div>
                     </>
                   )}
                 </div>
