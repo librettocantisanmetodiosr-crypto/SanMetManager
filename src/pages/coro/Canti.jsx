@@ -889,16 +889,23 @@ export default function Canti() {
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{cantiFiltrati.map(renderCanto)}</div>
       )}
 
-      {/* ══ Modal VISTA CANTO ══ */}
+      {/* ══ Modal VISTA CANTO — schermo intero ══ */}
       {vistaModal && (
-        <div className="modal-overlay" onClick={() => setVistaModal(null)}>
-          <div className="modal" style={{ maxHeight:'93vh' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-handle"/>
-
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
+        <div style={{
+          position:'fixed', top:0, right:0, bottom:0, left:0,
+          background:'#fff', zIndex:500,
+          display:'flex', flexDirection:'column',
+          animation:'fadeIn 0.18s ease'
+        }}>
+          {/* Header fisso */}
+          <div style={{
+            padding:'12px 16px 10px', borderBottom:'1px solid var(--gray-200)',
+            background:'#fff', flexShrink:0
+          }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
               <div style={{ flex:1, marginRight:8 }}>
                 <h2 style={{ fontSize:'1.1rem', lineHeight:1.3, margin:0 }}>{vistaModal.titolo}</h2>
-                <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
+                <div style={{ display:'flex', gap:5, marginTop:5, flexWrap:'wrap' }}>
                   {vistaModal.categoria && <span className="badge badge-green">{vistaModal.categoria}</span>}
                   {vistaModal.tonalita && (
                     <span className="badge badge-blue">
@@ -923,7 +930,7 @@ export default function Canti() {
             </div>
 
             {vistaModal.testo && vistaModal.pdf_url && (
-              <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+              <div style={{ display:'flex', gap:6, marginTop:10 }}>
                 <button onClick={() => setVistaPdf(false)} className={!vistaPdf ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'}>✍️ Testo</button>
                 <button onClick={() => setVistaPdf(true)} className={vistaPdf ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'}>📄 PDF</button>
               </div>
@@ -931,19 +938,17 @@ export default function Canti() {
 
             {/* Toolbar: zoom + trasposizione + lancia */}
             {vistaModal.testo && !vistaPdf && (
-              <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:14, padding:'10px 12px', background:'var(--gray-50)', borderRadius:10, flexWrap:'wrap' }}>
-                {/* Zoom */}
+              <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:10, padding:'8px 10px', background:'var(--gray-50)', borderRadius:10, flexWrap:'wrap' }}>
                 <button onClick={() => setFontSize(s => Math.max(11, s-2))}
-                  style={{ width:36, height:36, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', fontWeight:900, cursor:'pointer', fontSize:'0.85rem', flexShrink:0 }}>A−</button>
+                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', fontWeight:900, cursor:'pointer', fontSize:'0.85rem', flexShrink:0 }}>A−</button>
                 <span style={{ fontSize:'0.7rem', color:'var(--gray-400)', fontWeight:700, minWidth:28, textAlign:'center' }}>{fontSize}</span>
                 <button onClick={() => setFontSize(s => Math.min(32, s+2))}
-                  style={{ width:36, height:36, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', fontWeight:900, cursor:'pointer', fontSize:'0.85rem', flexShrink:0 }}>A+</button>
+                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', fontWeight:900, cursor:'pointer', fontSize:'0.85rem', flexShrink:0 }}>A+</button>
 
                 <div style={{ width:1, height:24, background:'var(--gray-200)', margin:'0 4px', flexShrink:0 }}/>
 
-                {/* Trasposizione */}
                 <button onClick={() => setTransposeOffset(n => n-1)}
-                  style={{ width:36, height:36, borderRadius:8, border:'1.5px solid #1565c0', background:'#fff', fontWeight:900, cursor:'pointer', color:'#1565c0', flexShrink:0, fontSize:'1.1rem' }}>♭</button>
+                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid #1565c0', background:'#fff', fontWeight:900, cursor:'pointer', color:'#1565c0', flexShrink:0, fontSize:'1.1rem' }}>♭</button>
                 <div style={{ textAlign:'center', minWidth:34, fontSize:'0.75rem', fontWeight:800,
                   color: transposeOffset !== 0 ? '#1565c0' : 'var(--gray-400)',
                   background: transposeOffset !== 0 ? '#e8f0fe' : 'transparent',
@@ -951,10 +956,10 @@ export default function Canti() {
                   {transposeOffset === 0 ? 'Ton.' : (transposeOffset > 0 ? `+${transposeOffset}` : `${transposeOffset}`)}
                 </div>
                 <button onClick={() => setTransposeOffset(n => n+1)}
-                  style={{ width:36, height:36, borderRadius:8, border:'1.5px solid #1565c0', background:'#fff', fontWeight:900, cursor:'pointer', color:'#1565c0', flexShrink:0, fontSize:'1.1rem' }}>♯</button>
+                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid #1565c0', background:'#fff', fontWeight:900, cursor:'pointer', color:'#1565c0', flexShrink:0, fontSize:'1.1rem' }}>♯</button>
                 {transposeOffset !== 0 && (
                   <button onClick={() => setTransposeOffset(0)}
-                    style={{ width:36, height:36, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', cursor:'pointer', fontSize:'0.9rem', flexShrink:0 }}>↺</button>
+                    style={{ width:34, height:34, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', cursor:'pointer', fontSize:'0.9rem', flexShrink:0 }}>↺</button>
                 )}
 
                 {isResp && (
@@ -968,17 +973,18 @@ export default function Canti() {
                 )}
               </div>
             )}
+          </div>
 
+          {/* Contenuto scrollabile — occupa tutto lo spazio restante */}
+          <div style={{ flex:1, overflowY:'auto', padding:'16px 16px 80px' }}>
             {!vistaPdf && vistaModal.testo ? (
-              <div style={{ overflowY:'auto', maxHeight:'60vh', padding:'2px 4px' }}>
-                <TestoFormattato testo={testoVista} fontSize={fontSize}/>
-              </div>
+              <TestoFormattato testo={testoVista} fontSize={fontSize}/>
             ) : vistaModal.pdf_url ? (
-              <div>
+              <div style={{ height:'100%', display:'flex', flexDirection:'column', gap:8 }}>
                 <iframe src={vistaModal.pdf_url + '#toolbar=0&navpanes=0&scrollbar=0'}
-                  style={{ width:'100%', height:'60vh', border:'none', borderRadius:8, background:'#f5f5f5' }}
+                  style={{ width:'100%', flex:1, minHeight:'70vh', border:'none', borderRadius:8, background:'#f5f5f5' }}
                   title={vistaModal.titolo}/>
-                <a href={vistaModal.pdf_url} target="_blank" rel="noreferrer" style={{ display:'block', marginTop:8 }}>
+                <a href={vistaModal.pdf_url} target="_blank" rel="noreferrer">
                   <button className="btn btn-outline btn-sm btn-block">↗ Apri in nuova scheda</button>
                 </a>
               </div>
