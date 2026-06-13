@@ -899,34 +899,45 @@ export default function Canti() {
         }}>
           {/* Header fisso */}
           <div style={{
-            padding:'12px 16px 10px', borderBottom:'1px solid var(--gray-200)',
+            padding:'10px 16px 10px', borderBottom:'1px solid var(--gray-200)',
             background:'#fff', flexShrink:0
           }}>
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
-              <div style={{ flex:1, marginRight:8 }}>
-                <h2 style={{ fontSize:'1.1rem', lineHeight:1.3, margin:0 }}>{vistaModal.titolo}</h2>
-                <div style={{ display:'flex', gap:5, marginTop:5, flexWrap:'wrap' }}>
-                  {vistaModal.categoria && <span className="badge badge-green">{vistaModal.categoria}</span>}
-                  {vistaModal.tonalita && (
-                    <span className="badge badge-blue">
-                      {vistaModal.tonalita}{transposeOffset !== 0 ? ` → ${trasponiAccordo(vistaModal.tonalita.split(' ')[0], transposeOffset)} ${vistaModal.tonalita.split(' ')[1]||''}` : ''}
-                    </span>
-                  )}
-                  {vistaModal.tempo_liturgico && <span className="badge badge-gold">{vistaModal.tempo_liturgico}</span>}
-                </div>
-              </div>
-              <div style={{ display:'flex', gap:4, alignItems:'flex-start' }}>
-                <button className="btn btn-ghost btn-sm btn-icon"
-                  style={{ color: preferiti.has(vistaModal.id) ? '#f59e0b' : 'var(--gray-400)', fontSize:'1.2rem', padding:'4px 6px' }}
+            {/* Riga superiore: ← Chiudi | ★ 📋 */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <button
+                onClick={() => setVistaModal(null)}
+                style={{
+                  display:'flex', alignItems:'center', gap:6,
+                  background:'var(--gray-100)', border:'none', borderRadius:10,
+                  padding:'10px 16px', fontSize:'0.95rem', fontWeight:800,
+                  color:'var(--gray-700)', cursor:'pointer', fontFamily:'Nunito, sans-serif',
+                  minHeight:44
+                }}
+              >
+                ← Chiudi
+              </button>
+              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                <button className="btn btn-ghost btn-icon"
+                  style={{ color: preferiti.has(vistaModal.id) ? '#f59e0b' : 'var(--gray-400)', fontSize:'1.4rem', minWidth:44, minHeight:44 }}
                   onClick={() => togglePreferito(vistaModal.id)}>
                   {preferiti.has(vistaModal.id) ? '★' : '☆'}
                 </button>
-                <button className="btn btn-ghost btn-sm btn-icon"
-                  style={{ color:'var(--gray-500)', fontSize:'1.1rem', padding:'4px 6px' }}
+                <button className="btn btn-ghost btn-icon"
+                  style={{ color:'var(--gray-500)', fontSize:'1.2rem', minWidth:44, minHeight:44 }}
                   title="Aggiungi a scaletta"
                   onClick={apriAddScaletta}>📋</button>
-                <button className="btn btn-ghost btn-icon" onClick={() => setVistaModal(null)}>✕</button>
               </div>
+            </div>
+            {/* Titolo e badge */}
+            <h2 style={{ fontSize:'1.05rem', lineHeight:1.3, margin:'0 0 6px' }}>{vistaModal.titolo}</h2>
+            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+              {vistaModal.categoria && <span className="badge badge-green">{vistaModal.categoria}</span>}
+              {vistaModal.tonalita && (
+                <span className="badge badge-blue">
+                  {vistaModal.tonalita}{transposeOffset !== 0 ? ` → ${trasponiAccordo(vistaModal.tonalita.split(' ')[0], transposeOffset)} ${vistaModal.tonalita.split(' ')[1]||''}` : ''}
+                </span>
+              )}
+              {vistaModal.tempo_liturgico && <span className="badge badge-gold">{vistaModal.tempo_liturgico}</span>}
             </div>
 
             {vistaModal.testo && vistaModal.pdf_url && (
