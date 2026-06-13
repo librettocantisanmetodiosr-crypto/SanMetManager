@@ -140,7 +140,7 @@ export default function Layout() {
       {/* DRAWER */}
       {drawerOpen && (
         <div
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:200 }}
+          style={{ position:'fixed', top:0, right:0, bottom:0, left:0, background:'rgba(0,0,0,0.5)', zIndex:200 }}
           onClick={() => setDrawerOpen(false)}
         >
           <div
@@ -230,7 +230,19 @@ export default function Layout() {
             color={s.color}
           />
         ))}
-        <BottomTab to="#" icon="☰" label="Menu" onClick={(e) => { e.preventDefault(); setDrawerOpen(true) }} />
+        <button
+          onClick={() => setDrawerOpen(true)}
+          style={{
+            flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+            justifyContent:'center', padding:'8px 4px 6px',
+            color:'var(--gray-400)', fontSize:'0.6rem', fontWeight:700, gap:3,
+            background:'none', border:'none', borderTop:'2px solid transparent',
+            cursor:'pointer', fontFamily:'Nunito, sans-serif'
+          }}
+        >
+          <span style={{ fontSize:'1.25rem' }}>☰</span>
+          Menu
+        </button>
       </nav>
     </div>
   )
