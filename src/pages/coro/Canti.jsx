@@ -808,7 +808,7 @@ export default function Canti() {
   return (
     <div style={{ padding:16 }}>
       <ToastContainer/>
-      <input ref={pdfInputRef} type="file" accept="application/pdf" style={{display:'none'}} onChange={onPdfEsistente}/>
+      <input ref={pdfInputRef} type="file" accept=".pdf,application/pdf" style={{display:'none'}} onChange={onPdfEsistente}/>
       <input ref={ocrInputRef} type="file" accept="image/*,application/pdf" style={{display:'none'}}
         onChange={e => { const f = e.target.files?.[0]; if(f) setOcrFileWithPreview(f) }}/>
 
@@ -1360,26 +1360,28 @@ export default function Canti() {
             {/* ── PANNELLO PDF ── */}
             {tipoIns === 'pdf' && (
               <div className="form-group">
-                <label className="form-label">File PDF</label>
-                <input ref={pdfInputNuovoRef} type="file" accept="application/pdf" style={{ display:'none' }}
-                  onChange={e => { const f=e.target.files?.[0]; if(f) setPdfFile(f) }}/>
-                <div onClick={() => pdfInputNuovoRef.current?.click()}
-                  style={{ border:`2px dashed ${pdfFile ? 'var(--primary)' : 'var(--gray-300)'}`, borderRadius:10,
-                    padding:'24px 16px', textAlign:'center', cursor:'pointer', background: pdfFile ? 'var(--primary-bg)' : '#fafafa' }}>
+                <span className="form-label">File PDF</span>
+                <label style={{ display:'block', border:`2px dashed ${pdfFile ? 'var(--primary)' : 'var(--gray-300)'}`, borderRadius:10,
+                  padding:'24px 16px', textAlign:'center', cursor:'pointer', background: pdfFile ? 'var(--primary-bg)' : '#fafafa' }}>
+                  <input ref={pdfInputNuovoRef} type="file" accept=".pdf,application/pdf" style={{ display:'none' }}
+                    onChange={e => { const f=e.target.files?.[0]; if(f) setPdfFile(f) }}/>
                   {pdfFile ? (
                     <>
                       <div style={{ fontSize:'2rem', marginBottom:6 }}>📄</div>
                       <div style={{ fontWeight:800, color:'var(--primary)', fontSize:'0.88rem' }}>{pdfFile.name}</div>
-                      <div className="text-xs text-muted" style={{ marginTop:4 }}>{(pdfFile.size/1024/1024).toFixed(1)} MB · Clicca per cambiare</div>
+                      <div className="text-xs text-muted" style={{ marginTop:4 }}>{(pdfFile.size/1024/1024).toFixed(1)} MB · Tocca per cambiare</div>
                     </>
                   ) : (
                     <>
                       <div style={{ fontSize:'2rem', marginBottom:8 }}>⬆️</div>
                       <div style={{ fontWeight:700, color:'var(--gray-700)', fontSize:'0.9rem' }}>Tocca per selezionare il PDF</div>
-                      <div className="text-xs text-muted" style={{ marginTop:4 }}>Max 20 MB · Su iPad scegli "Sfoglia" poi vai in "Su questo iPad → Libri"</div>
+                      <div className="text-xs text-muted" style={{ marginTop:4 }}>Max 20 MB</div>
+                      <div className="text-xs text-muted" style={{ marginTop:6, padding:'6px 10px', background:'var(--blue-bg)', borderRadius:6, color:'var(--blue)', lineHeight:1.4 }}>
+                        📚 Per PDF dall'app Libri: apri il PDF in Libri → tocca Condividi → "Salva su File" → poi selezionalo qui
+                      </div>
                     </>
                   )}
-                </div>
+                </label>
               </div>
             )}
 
