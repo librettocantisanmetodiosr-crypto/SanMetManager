@@ -690,11 +690,34 @@ export default function Canti() {
   }
 
   const uploadPdfFile = async (file, cantoId) => {
-    const path = `${cantoId}.pdf`
-    const { error } = await supabase.storage.from('canti-pdf').upload(path, file, { upsert:true, contentType:'application/pdf' })
-    if (error) { toast('PDF non caricato: ' + error.message,'error'); return }
-    const { data: urlData } = supabase.storage.from('canti-pdf').getPublicUrl(path)
-    await supabase.from('canti').update({ pdf_url: urlData.publicUrl }).eq('id', cantoId)
+    // I PDF vengono caricati su Cloudflare R2 (10 GB gratis) tramite una
+    // funzione serverless che genera un link di upload temporaneo e sicuro.
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) { toast('Sessione scaduta, rifai il login','error'); return }
+
+    // 1. Chiedi al server un link di caricamento firmato
+    const resp = await fetch('/api/canti-upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ cantoId }),
+    })
+    if (!resp.ok) {
+      const msg = await resp.json().catch(() => ({}))
+      toast('PDF non caricato: ' + (msg.error || resp.statusText), 'error'); return
+    }
+    const { uploadUrl, publicUrl } = await resp.json()
+
+    // 2. Carica il file direttamente su R2
+    const put = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: file,
+    })
+    if (!put.ok) { toast('PDF non caricato (errore R2)', 'error'); return }
+
+    // 3. Salva l'URL pubblico nel database
+    await supabase.from('canti').update({ pdf_url: publicUrl }).eq('id', cantoId)
   }
 
   const elimina = async (id) => {
@@ -716,7 +739,16 @@ export default function Canti() {
   }
   const rimuoviPdf = async (id) => {
     if (!window.confirm('Rimuovere il PDF?')) return
-    await supabase.storage.from('canti-pdf').remove([`${id}.pdf`])
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (token) {
+      // Cancella il file da R2 tramite la funzione serverless
+      await fetch('/api/canti-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cantoId: id }),
+      }).catch(() => {})
+    }
     await supabase.from('canti').update({ pdf_url: null }).eq('id', id)
     toast('PDF rimosso','success'); caricaCanti()
   }

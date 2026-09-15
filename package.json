@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.540.0",
+    "@aws-sdk/s3-request-presigner": "^3.540.0",
     "@emailjs/browser": "^4.4.1",
     "@supabase/supabase-js": "^2.39.0",
     "date-fns": "^3.3.0",
