@@ -27,10 +27,12 @@ async function verificaUtente(token) {
 function r2Client() {
   return new S3Client({
     region: 'auto',
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    // .trim() difensivo: un a capo o uno spazio incollato per sbaglio
+    // farebbe fallire la firma della richiesta con un errore oscuro.
+    endpoint: `https://${(process.env.R2_ACCOUNT_ID || '').trim()}.r2.cloudflarestorage.com`,
     credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      accessKeyId: (process.env.R2_ACCESS_KEY_ID || '').trim(),
+      secretAccessKey: (process.env.R2_SECRET_ACCESS_KEY || '').trim(),
     },
   })
 }
