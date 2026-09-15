@@ -684,40 +684,61 @@ export default function Canti() {
       if (error) { toast('Errore nel salvataggio','error'); setSaving(false); return }
       cantoId = modal.id
     }
-    if (pdfFile && cantoId) await uploadPdfFile(pdfFile, cantoId)
-    toast(modal === 'nuovo' ? 'Canto aggiunto ✓' : 'Canto aggiornato ✓','success')
+    let pdfOk = true
+    if (pdfFile && cantoId) pdfOk = await uploadPdfFile(pdfFile, cantoId)
+    if (pdfOk) toast(modal === 'nuovo' ? 'Canto aggiunto ✓' : 'Canto aggiornato ✓','success')
+    else toast('Canto salvato, ma il PDF non è stato caricato','error')
     setSaving(false); setModal(null); caricaCanti()
   }
 
   const uploadPdfFile = async (file, cantoId) => {
     // I PDF vengono caricati su Cloudflare R2 (10 GB gratis) tramite una
     // funzione serverless che genera un link di upload temporaneo e sicuro.
+    // Restituisce true solo se il PDF è davvero finito su R2.
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
-    if (!token) { toast('Sessione scaduta, rifai il login','error'); return }
+    if (!token) { toast('Sessione scaduta, rifai il login','error'); return false }
 
     // 1. Chiedi al server un link di caricamento firmato
-    const resp = await fetch('/api/canti-upload-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ cantoId }),
-    })
+    let resp
+    try {
+      resp = await fetch('/api/canti-upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cantoId }),
+      })
+    } catch (e) {
+      toast('Server non raggiungibile: ' + e.message, 'error'); return false
+    }
     if (!resp.ok) {
       const msg = await resp.json().catch(() => ({}))
-      toast('PDF non caricato: ' + (msg.error || resp.statusText), 'error'); return
+      toast(`Preparazione fallita (${resp.status}): ${msg.error || resp.statusText}`, 'error')
+      return false
     }
     const { uploadUrl, publicUrl } = await resp.json()
 
     // 2. Carica il file direttamente su R2
-    const put = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/pdf' },
-      body: file,
-    })
-    if (!put.ok) { toast('PDF non caricato (errore R2)', 'error'); return }
+    let put
+    try {
+      put = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: file,
+      })
+    } catch (e) {
+      // Tipicamente CORS non configurato o indirizzo del bucket errato
+      toast('Caricamento su R2 bloccato (CORS?): ' + e.message, 'error'); return false
+    }
+    if (!put.ok) {
+      const dettaglio = await put.text().catch(() => '')
+      toast(`R2 ha rifiutato il file (${put.status}). ${dettaglio.slice(0,120)}`, 'error')
+      return false
+    }
 
     // 3. Salva l'URL pubblico nel database
-    await supabase.from('canti').update({ pdf_url: publicUrl }).eq('id', cantoId)
+    const { error: dbErr } = await supabase.from('canti').update({ pdf_url: publicUrl }).eq('id', cantoId)
+    if (dbErr) { toast('File caricato ma non salvato: ' + dbErr.message, 'error'); return false }
+    return true
   }
 
   const elimina = async (id) => {
@@ -733,9 +754,11 @@ export default function Canti() {
     if (!cantoId || file.type !== 'application/pdf') return toast('Seleziona un PDF','error')
     if (file.size > 20*1024*1024) return toast('File troppo grande (max 20 MB)','error')
     setUploadingPdf(cantoId)
-    await uploadPdfFile(file, cantoId)
+    const ok = await uploadPdfFile(file, cantoId)
     setUploadingPdf(null); e.target.value = ''; caricaCanti()
-    toast('PDF caricato ✓','success')
+    // Mostra il successo SOLO se il caricamento è andato a buon fine:
+    // altrimenti l'errore mostrato da uploadPdfFile resta visibile.
+    if (ok) toast('PDF caricato ✓','success')
   }
   const rimuoviPdf = async (id) => {
     if (!window.confirm('Rimuovere il PDF?')) return
