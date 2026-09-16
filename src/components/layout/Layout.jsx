@@ -102,10 +102,56 @@ export default function Layout() {
   const nomeCompleto = profilo ? `${profilo.nome || ''} ${profilo.cognome || ''}`.trim() : 'Caricamento...'
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', background:'var(--gray-50)' }}>
+    <div className="app-shell">
 
-      {/* TOP BAR */}
-      <header style={{
+      {/* BARRA LATERALE (solo computer) */}
+      <aside className="side-desktop">
+        <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid var(--gray-100)' }}>
+          <div style={{ fontFamily:'Cinzel, serif', fontSize:'1rem', fontWeight:600, color:'var(--primary)', lineHeight:1.1 }}>
+            SanMetManager
+          </div>
+          <div style={{ fontSize:'0.68rem', color:'var(--gray-500)', marginTop:3 }}>
+            Parrocchia San Metodio
+          </div>
+        </div>
+
+        <div style={{ padding:'8px 0', flex:1 }}>
+          <DrawerLink to="/" icon="home" label="Dashboard" />
+          {sezioniVisibili.map(sezione => (
+            <div key={sezione.key}>
+              <div
+                className={'side-sec' + (activeSection === sezione.key ? ' on' : '')}
+                style={{ borderLeftColor: activeSection === sezione.key ? sezione.color : 'transparent' }}
+                onClick={() => apriSezione(sezione.key)}
+              >
+                <span style={{ display:'flex', alignItems:'center', gap:11 }}>
+                  <Icon name={sezione.icon} />{sezione.label}
+                </span>
+                <Icon name={activeSection === sezione.key ? 'su' : 'giu'} size={15} />
+              </div>
+              {activeSection === sezione.key && sezione.voci.filter(v => canSee(v.ruoli)).map(v => (
+                <DrawerLink key={v.path} to={v.path} icon={v.icon} label={v.label} indent />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ borderTop:'1px solid var(--gray-200)', padding:'12px 14px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+            <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.78rem', fontWeight:800, flexShrink:0 }}>{initiali}</div>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontSize:'0.82rem', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{nomeCompleto}</div>
+              <div style={{ fontSize:'0.68rem', color:'var(--gray-500)' }}>{(profilo?.ruolo || '').toUpperCase()}</div>
+            </div>
+          </div>
+          <button className="btn btn-outline btn-sm btn-block" onClick={handleLogout} style={{ color:'var(--red)', gap:8 }}>
+            <Icon name="esci" size={16} /> Esci
+          </button>
+        </div>
+      </aside>
+
+      {/* TOP BAR (solo telefono) */}
+      <header className="app-topbar" style={{
         background:'#fff', borderBottom:'1px solid var(--gray-200)',
         padding:'12px 16px', display:'flex', alignItems:'center',
         justifyContent:'space-between', position:'sticky', top:0, zIndex:100,
@@ -208,14 +254,14 @@ export default function Layout() {
       )}
 
       {/* CONTENUTO PAGINA */}
-      <main style={{ flex:1, paddingBottom:80 }}>
-        <div style={{ maxWidth:720, margin:'0 auto', width:'100%' }}>
+      <main className="app-main">
+        <div className="app-content">
           <Outlet />
         </div>
       </main>
 
-      {/* BOTTOM NAV */}
-      <nav style={{
+      {/* BOTTOM NAV (solo telefono) */}
+      <nav className="app-bottomnav" style={{
         position:'fixed', bottom:0, left:0, right:0,
         background:'#fff', borderTop:'1px solid var(--gray-200)',
         display:'flex', boxShadow:'0 -2px 10px rgba(0,0,0,0.06)',
