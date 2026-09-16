@@ -198,6 +198,18 @@ tr:hover td { background: var(--gray-50); }
   .side-sec.on { background: var(--gray-50); }
 }
 
+/* DASHBOARD — due colonne su computer, una sola su telefono */
+.dash-grid { display: grid; gap: 18px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 1024px) {
+  .dash-grid { grid-template-columns: 1.15fr 0.85fr; gap: 20px; }
+}
+.dash-label {
+  font-size: 0.72rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--gray-500); margin-bottom: 10px;
+}
+.meter { height: 8px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+.meter > div { height: 100%; background: var(--primary); border-radius: 99px; }
+
 /* DIVIDER */
 hr { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
 
