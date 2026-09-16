@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 import { logAzione } from '../../lib/logger'
+import Icon from '../../components/Icon'
 
 const vuota = { nome: '', anno_cammino: '', giorno: 'Sabato', note: '' }
 
@@ -17,6 +18,7 @@ export default function Classi() {
   const [form, setForm] = useState(vuota)
   const [selectedCatechisti, setSelectedCatechisti] = useState([])
   const [saving, setSaving] = useState(false)
+  const [conteggi, setConteggi] = useState({})
 
   useEffect(() => { carica() }, [profilo])
 
@@ -49,6 +51,16 @@ export default function Classi() {
     setClassi(cl || [])
     setCatechisti(catOptions)
     setLoading(false)
+
+    // conteggio bambini attivi per classe
+    const ids = (cl || []).map(c => c.id)
+    if (ids.length) {
+      const { data: bs } = await supabase.from('bambini')
+        .select('classe_id').eq('attivo', true).in('classe_id', ids)
+      const map = {}
+      ;(bs || []).forEach(b => { map[b.classe_id] = (map[b.classe_id] || 0) + 1 })
+      setConteggi(map)
+    }
   }
 
   const apriNuova = () => {
@@ -106,35 +118,62 @@ export default function Classi() {
   }
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 16, maxWidth: 1100, margin: '0 auto' }}>
       <ToastContainer />
       <div className="flex items-center justify-between mb-4">
-        <h1>🏫 Classi</h1>
-        {isAdmin && <button className="btn btn-primary btn-sm" onClick={apriNuova}>＋ Nuova</button>}
+        <h1>Classi</h1>
+        {isAdmin && (
+          <button className="btn btn-primary btn-sm" onClick={apriNuova} style={{ gap: 6 }}>
+            <Icon name="classi" size={16} /> Nuova classe
+          </button>
+        )}
       </div>
 
       {loading ? (
         <div className="loader"><div className="spinner" />Caricamento…</div>
       ) : classi.length === 0 ? (
-        <div className="empty-state"><div className="icon">🏫</div><p>Nessuna classe ancora.<br />Creane una!</p></div>
+        <div className="empty-state"><Icon name="classi" size={44} style={{ color: 'var(--gray-300)' }} /><p style={{ marginTop: 12 }}>Nessuna classe ancora.<br />{isAdmin ? 'Creane una con il pulsante in alto.' : ''}</p></div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
           {classi.map(c => {
-            const cats = c.classi_catechisti?.map(cc => `${cc.profili?.nome} ${cc.profili?.cognome}`).join(', ') || '—'
+            const cats = c.classi_catechisti?.map(cc => `${cc.profili?.nome} ${cc.profili?.cognome}`).join(', ') || 'Nessun catechista'
+            const n = conteggi[c.id] || 0
             return (
               <div key={c.id} className="card">
                 <div className="card-body">
-                  <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
-                    <h3>{c.nome}</h3>
+                  <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--primary-bg)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name="classi" size={21} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <h3 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nome}</h3>
+                        <div className="text-xs text-muted">
+                          {c.anno_cammino ? c.anno_cammino + ' · ' : ''}{c.giorno}
+                        </div>
+                      </div>
+                    </div>
                     {isAdmin && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => apriModifica(c)}>✏️</button>
-                        <button className="btn btn-red btn-sm" onClick={() => elimina(c.id)}>🗑</button>
+                      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                        <button className="btn btn-outline btn-sm btn-icon" onClick={() => apriModifica(c)} aria-label="Modifica">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                        </button>
+                        <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(c.id)} aria-label="Elimina">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+                        </button>
                       </div>
                     )}
                   </div>
-                  <div className="text-sm text-muted">{c.anno_cammino && <span>Anno: {c.anno_cammino} · </span>}{c.giorno}</div>
-                  <div className="text-sm" style={{ marginTop: 4 }}>👤 {cats}</div>
+
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <span className="badge badge-green">{n} {n === 1 ? 'bambino' : 'bambini'}</span>
+                    <span className="badge badge-gray">{c.classi_catechisti?.length || 0} catechist{(c.classi_catechisti?.length || 0) === 1 ? 'a' : 'i'}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <Icon name="coristi" size={15} style={{ color: 'var(--gray-500)', marginTop: 2 }} />
+                    <span className="text-sm" style={{ color: cats === 'Nessun catechista' ? 'var(--gray-500)' : 'var(--gray-700)' }}>{cats}</span>
+                  </div>
                 </div>
               </div>
             )
