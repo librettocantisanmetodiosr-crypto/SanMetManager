@@ -126,6 +126,48 @@ td { padding: 12px 14px; border-bottom: 1px solid var(--gray-100); vertical-alig
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--gray-50); }
 
+/* SELETTORI A PILLOLE — classi e date */
+.sel-label {
+  display: block; font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gray-500); margin-bottom: 9px;
+}
+.chip-row {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar { height: 0; }
+.chip {
+  flex-shrink: 0; height: 44px; padding: 0 17px; border-radius: 999px;
+  border: 1.5px solid var(--gray-200); background: #fff; color: var(--gray-700);
+  font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap; transition: all 0.15s; -webkit-appearance: none;
+}
+.chip:hover:not(.on) { border-color: var(--primary); color: var(--primary); }
+.chip:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.date-chip {
+  flex-shrink: 0; position: relative; width: 68px; min-height: 66px;
+  border-radius: 12px; border: 1.5px solid var(--gray-200); background: #fff;
+  cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px; padding: 8px 4px;
+  font-family: 'Nunito', sans-serif; transition: all 0.15s; -webkit-appearance: none;
+}
+.date-chip:hover:not(.on) { border-color: var(--primary); }
+.date-chip:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.date-chip .dow  { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-500); }
+.date-chip .dnum { font-size: 1.15rem; font-weight: 800; color: var(--gray-900); line-height: 1.1; }
+.date-chip .dmon { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; color: var(--gray-500); }
+.date-chip.on { background: var(--primary); border-color: var(--primary); }
+.date-chip.on .dow, .date-chip.on .dnum, .date-chip.on .dmon { color: #fff; }
+.date-chip .extra {
+  position: absolute; top: 5px; right: 6px; width: 6px; height: 6px;
+  border-radius: 99px; background: var(--gold);
+}
+.date-chip.on .extra { background: #fff; }
+
 /* DIVIDER */
 hr { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
 

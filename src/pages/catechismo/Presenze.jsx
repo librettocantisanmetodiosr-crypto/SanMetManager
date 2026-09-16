@@ -163,42 +163,85 @@ export default function Presenze() {
   const assenti  = bambini.filter(b => presenze[b.id] === 'A').length
   const nonSegnati = bambini.length - presenti - assenti
 
+  const dataSelezionata = date.find(d => d.id === dataId) || null
+
   return (
     <div style={{ padding: 16 }}>
       <ToastContainer />
-      <h1 style={{ marginBottom: 16 }}>✅ Registro Presenze</h1>
+      <h1 style={{ marginBottom: 16 }}>Registro presenze</h1>
 
       {/* Filtri */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Classe</label>
-            <select className="form-control" value={classeId} onChange={e => setClasseId(e.target.value)}>
-              <option value="">— seleziona classe —</option>
-              {classi.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          <div>
+            <span className="sel-label">Classe</span>
+            {classi.length === 0 ? (
+              <p className="text-sm text-muted">Nessuna classe disponibile.</p>
+            ) : (
+              <div className="chip-row">
+                {classi.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={'chip' + (classeId === c.id ? ' on' : '')}
+                    aria-pressed={classeId === c.id}
+                    onClick={() => setClasseId(classeId === c.id ? '' : c.id)}
+                  >{c.nome}</button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label className="form-label" style={{ marginBottom: 0 }}>Data incontro</label>
+
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="sel-label" style={{ marginBottom: 0 }}>Data incontro</span>
               {classeId && (
                 <button
                   className="btn btn-outline btn-sm"
-                  style={{ fontSize: '0.72rem', padding: '3px 10px' }}
+                  style={{ fontSize: '0.72rem', padding: '4px 11px' }}
                   onClick={() => setModalDataExtra(true)}
-                >＋ Data extra</button>
+                >+ Data extra</button>
               )}
             </div>
-            <select className="form-control" value={dataId} onChange={e => setDataId(e.target.value)}>
-              <option value="">— seleziona data —</option>
-              {date.map(d => (
-                <option key={d.id} value={d.id}>
-                  {d.classe_id ? '⭐ ' : ''}{new Date(d.data + 'T00:00:00').toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'long', year:'numeric' })}
-                  {d.descrizione ? ` — ${d.descrizione}` : ''}
-                </option>
-              ))}
-            </select>
+
+            {!classeId ? (
+              <p className="text-sm text-muted" style={{ marginTop: 10 }}>Scegli prima una classe.</p>
+            ) : date.length === 0 ? (
+              <p className="text-sm text-muted" style={{ marginTop: 10 }}>Nessuna data disponibile.</p>
+            ) : (
+              <div className="chip-row" style={{ marginTop: 10 }}>
+                {date.map(d => {
+                  const dt = new Date(d.data + 'T00:00:00')
+                  const sel = dataId === d.id
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={'date-chip' + (sel ? ' on' : '')}
+                      aria-pressed={sel}
+                      title={dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (d.descrizione ? ' - ' + d.descrizione : '')}
+                      onClick={() => setDataId(sel ? '' : d.id)}
+                    >
+                      {d.classe_id && <span className="extra" />}
+                      <span className="dow">{dt.toLocaleDateString('it-IT', { weekday: 'short' })}</span>
+                      <span className="dnum">{dt.getDate()}</span>
+                      <span className="dmon">{dt.toLocaleDateString('it-IT', { month: 'short' })}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {dataSelezionata && (
+              <p className="text-sm text-muted" style={{ marginTop: 11 }}>
+                {new Date(dataSelezionata.data + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                {dataSelezionata.descrizione ? ' - ' + dataSelezionata.descrizione : ''}
+                {dataSelezionata.classe_id ? ' (data extra)' : ''}
+              </p>
+            )}
           </div>
+
         </div>
       </div>
 
