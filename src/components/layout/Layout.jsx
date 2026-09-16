@@ -51,6 +51,7 @@ const SEZIONI = [
     ruoli: ['admin','parroco','segreteria','responsabile'],
     voci: [
       { path: '/admin/utenti',    label: 'Utenti',    icon: 'utenti' },
+      { path: '/admin/permessi',  label: 'Permessi',  icon: 'amministrazione', ruoli: ['admin','parroco'] },
       { path: '/admin/attivita',  label: 'Attività',  icon: 'attivita', ruoli: ['admin'] },
     ]
   },
