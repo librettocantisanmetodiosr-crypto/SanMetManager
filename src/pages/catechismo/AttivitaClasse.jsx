@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
+import Icon from '../../components/Icon'
 
 const COLORI = ['#4d7058','#2980b9','#8e44ad','#e67e22','#e74c3c','#16a085','#2c3e50','#f39c12']
 
@@ -101,40 +102,49 @@ export default function AttivitaClasse() {
   const fmtData = (d) => new Date(d + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 16, maxWidth: 900, margin: '0 auto' }}>
       <ToastContainer />
       <div className="flex items-center justify-between mb-4">
-        <h1>📝 Diario classi</h1>
-        <button className="btn btn-primary btn-sm" onClick={apriNuovo}>＋ Aggiungi</button>
+        <h1>Diario delle attivit&agrave;</h1>
+        <button className="btn btn-primary btn-sm" onClick={apriNuovo} style={{ gap: 6 }}>
+          <Icon name="diario" size={16} /> Aggiungi
+        </button>
       </div>
 
       {/* Filtro classe */}
       {classi.length > 1 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
+        <div className="chip-row" style={{ marginBottom: 18 }}>
           <button
+            type="button"
+            className={'chip' + (!filtroClasse ? ' on' : '')}
             onClick={() => setFiltroClasse('')}
-            style={{ flexShrink: 0, borderRadius: 20, padding: '6px 14px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', border: '1.5px solid', background: !filtroClasse ? 'var(--primary)' : '#fff', color: !filtroClasse ? '#fff' : 'var(--gray-700)', borderColor: !filtroClasse ? 'var(--primary)' : 'var(--gray-200)' }}
           >Tutte</button>
-          {classi.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setFiltroClasse(filtroClasse === c.id ? '' : c.id)}
-              style={{ flexShrink: 0, borderRadius: 20, padding: '6px 14px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', border: '1.5px solid', background: filtroClasse === c.id ? coloreClasse(c.id) : '#fff', color: filtroClasse === c.id ? '#fff' : 'var(--gray-700)', borderColor: filtroClasse === c.id ? coloreClasse(c.id) : 'var(--gray-200)' }}
-            >{c.nome}</button>
-          ))}
+          {classi.map(c => {
+            const col = coloreClasse(c.id)
+            const on = filtroClasse === c.id
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className={'chip' + (on ? ' on' : '')}
+                style={on ? { background: col, borderColor: col, color: '#fff' } : null}
+                onClick={() => setFiltroClasse(on ? '' : c.id)}
+              >{c.nome}</button>
+            )
+          })}
         </div>
       )}
 
       {loading ? (
         <div className="loader"><div className="spinner" /></div>
       ) : dateOrdinate.length === 0 ? (
-        <div className="empty-state"><div className="icon">📝</div><p>Nessuna attività ancora.<br />Aggiungi la prima nota!</p></div>
+        <div className="empty-state"><Icon name="diario" size={44} style={{ color: 'var(--gray-300)' }} /><p style={{ marginTop: 12 }}>Nessuna nota ancora.<br />Aggiungi la prima!</p></div>
       ) : (
         dateOrdinate.map(data => (
           <div key={data} style={{ marginBottom: 20 }}>
             {/* Intestazione data */}
             <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--gray-500)', marginBottom: 8, paddingLeft: 2 }}>
-              📅 {fmtData(data)}
+              {fmtData(data)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {perData[data].map(a => {
@@ -158,8 +168,8 @@ export default function AttivitaClasse() {
                         </div>
                         {puoModificare && (
                           <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                            <button className="btn btn-outline btn-sm btn-icon" onClick={() => apriModifica(a)}>✏️</button>
-                            <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(a.id)}>🗑</button>
+                            <button className="btn btn-outline btn-sm btn-icon" onClick={() => apriModifica(a)} aria-label="Modifica"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+                            <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(a.id)} aria-label="Elimina"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
                           </div>
                         )}
                       </div>
@@ -177,7 +187,7 @@ export default function AttivitaClasse() {
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-handle" />
-            <div className="modal-title">{modal === 'nuovo' ? '📝 Nuova nota' : '✏️ Modifica nota'}</div>
+            <div className="modal-title">{modal === 'nuovo' ? 'Nuova nota' : 'Modifica nota'}</div>
 
             {classi.length > 1 && (
               <div className="form-group">
