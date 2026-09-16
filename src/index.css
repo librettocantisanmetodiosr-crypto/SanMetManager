@@ -210,6 +210,37 @@ tr:hover td { background: var(--gray-50); }
 .meter { height: 8px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
 .meter > div { height: 100%; background: var(--primary); border-radius: 99px; }
 
+/* TABELLA BAMBINI — schematica, con stato dei dati */
+.bimbi-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.bimbi-table th {
+  text-align: left; padding: 9px 12px; font-size: 0.64rem; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-500);
+  background: var(--gray-50); border-bottom: 2px solid var(--gray-200); white-space: nowrap;
+}
+.bimbi-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+.bimbi-table tr:last-child td { border-bottom: none; }
+.bimbi-table tr:hover td { background: var(--gray-50); }
+.miss {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--red-bg); color: #8f5641;
+  font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+  margin: 1px 3px 1px 0; white-space: nowrap;
+}
+.ok-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--primary-bg); color: #3f6049;
+  font-size: 0.7rem; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+}
+.grp-head {
+  display: flex; align-items: center; gap: 9px;
+  margin: 22px 0 10px; font-size: 0.9rem; font-weight: 800;
+}
+.grp-head .n { font-size: 0.72rem; font-weight: 700; color: var(--gray-500); }
+
+.only-desk{display:none}
+.only-mob{display:block}
+@media(min-width:900px){.only-desk{display:block}.only-mob{display:none}}
+
 /* DIVIDER */
 hr { border: none; border-top: 1px solid var(--gray-200); margin: 16px 0; }
 

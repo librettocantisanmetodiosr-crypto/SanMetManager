@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 import { logAzione } from '../../lib/logger'
+import Icon from '../../components/Icon'
 
 const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'' }
 
@@ -130,87 +131,168 @@ export default function Bambini() {
     return okN && okC
   })
 
+  // Quali dati mancano a un bambino (per capire cosa completare)
+  const datiMancanti = (b) => {
+    const m = []
+    if (!b.classe_id) m.push('classe')
+    if (!b.data_nascita) m.push('data nascita')
+    if (!b.telefono1 && !b.telefono2) m.push('telefono')
+    if (!b.indirizzo) m.push('indirizzo')
+    return m
+  }
+  const incompleti = filtrati.filter(b => datiMancanti(b).length > 0).length
+
+  // Raggruppa per classe (le classi seguono l'ordine di `classi`, poi "Senza classe")
+  const gruppi = []
+  classi.forEach(c => {
+    const membri = filtrati.filter(b => b.classe_id === c.id)
+    if (membri.length) gruppi.push({ id: c.id, nome: c.nome, membri })
+  })
+  const senza = filtrati.filter(b => !b.classe_id)
+  if (senza.length) gruppi.push({ id: null, nome: 'Senza classe', membri: senza })
+
+  const fmtNasc = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('it-IT') : ''
+
+  const RigaAzioni = (b) => (
+    <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
+      <button className="btn btn-outline btn-sm btn-icon" onClick={() => apriStats(b)} aria-label="Presenze">
+        <Icon name="report" size={15} />
+      </button>
+      {isAdmin && (
+        <button className="btn btn-outline btn-sm btn-icon" aria-label="Modifica" onClick={() => {
+          setForm({ nome:b.nome, cognome:b.cognome, data_nascita:b.data_nascita||'', indirizzo:b.indirizzo||'', telefono1:b.telefono1||'', telefono2:b.telefono2||'', note:b.note||'', classe_id:b.classe_id||'' })
+          setModal(b)
+        }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+      )}
+      {isAdmin && (
+        <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(b.id)} aria-label="Elimina">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+        </button>
+      )}
+    </div>
+  )
+
   return (
-    <div style={{ padding:16 }}>
+    <div style={{ padding:16, maxWidth:1100, margin:'0 auto' }}>
       <ToastContainer/>
       <div className="flex items-center justify-between mb-4">
-        <h1>👦 Bambini</h1>
+        <h1>Bambini</h1>
         <div style={{ display:'flex', gap:8 }}>
           {isAdmin && (
-            <button className="btn btn-outline btn-sm" onClick={exportExcel} disabled={exporting}>
-              {exporting ? '...' : '⬇ CSV'}
+            <button className="btn btn-outline btn-sm" onClick={exportExcel} disabled={exporting} style={{ gap:6 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
+              {exporting ? '...' : 'CSV'}
             </button>
           )}
-          {isAdmin && <button className="btn btn-primary btn-sm" onClick={() => { setForm(vuoto); setModal('nuovo') }}>＋ Aggiungi</button>}
+          {isAdmin && (
+            <button className="btn btn-primary btn-sm" onClick={() => { setForm(vuoto); setModal('nuovo') }} style={{ gap:6 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Aggiungi
+            </button>
+          )}
         </div>
       </div>
 
-      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
-        <input className="form-control" placeholder="🔍 Cerca..." value={cerca} onChange={e => setCerca(e.target.value)} style={{ flex:1 }} />
-        <select className="form-control" value={filtroClasse} onChange={e => setFiltroClasse(e.target.value)} style={{ width:130 }}>
-          <option value="">Tutte</option>
-          {classi.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
+      <div style={{ display:'flex', alignItems:'center', gap:9, height:44, padding:'0 14px', background:'#fff', border:'1px solid var(--gray-200)', borderRadius:11, marginBottom:14 }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--gray-500)" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input placeholder="Cerca nome o cognome..." value={cerca} onChange={e => setCerca(e.target.value)}
+          style={{ flex:1, border:'none', outline:'none', fontFamily:'Nunito, sans-serif', fontSize:'0.9rem', background:'transparent', color:'var(--gray-900)' }} />
       </div>
 
-      <div className="text-xs text-muted" style={{ marginBottom:10 }}>{filtrati.length} bambini</div>
-
-      {loading ? <div className="loader"><div className="spinner"/></div> : (
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {filtrati.map((b, i) => (
-            <div key={b.id} className="card">
-              <div className="card-body" style={{ padding:'12px 14px' }}>
-                <div className="flex items-center justify-between">
-                  <div style={{ flex:1, display:'flex', alignItems:'flex-start', gap:10 }}>
-                    <span style={{ minWidth:20, paddingTop:2, fontSize:'0.72rem', fontWeight:700, color:'var(--gray-400)', flexShrink:0 }}>{i+1}</span>
-                    <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800 }}>{b.cognome} {b.nome}</div>
-                    <div className="text-sm text-muted">
-                      {b.classi?.nome || 'Nessuna classe'}
-                      {b.data_nascita ? ' · n. ' + new Date(b.data_nascita).toLocaleDateString('it-IT') : ''}
-                    </div>
-                    {b.indirizzo && <div className="text-xs text-muted" style={{ marginTop:2 }}>📍 {b.indirizzo}</div>}
-                    {b.note && <div className="text-xs" style={{ color:'var(--red)', marginTop:2 }}>⚠️ {b.note}</div>}
-                    {(b.telefono1 || b.telefono2) && (
-                      <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
-                        {b.telefono1 && (
-                          <a href={`tel:${b.telefono1}`}
-                            style={{ display:'inline-flex', alignItems:'center', gap:5, background:'var(--primary-bg)', color:'var(--primary)', borderRadius:8, padding:'5px 10px', fontSize:'0.82rem', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap' }}
-                            onClick={e => e.stopPropagation()}
-                          >📞 {b.telefono1}</a>
-                        )}
-                        {b.telefono2 && (
-                          <a href={`tel:${b.telefono2}`}
-                            style={{ display:'inline-flex', alignItems:'center', gap:5, background:'var(--blue-bg)', color:'var(--blue)', borderRadius:8, padding:'5px 10px', fontSize:'0.82rem', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap' }}
-                            onClick={e => e.stopPropagation()}
-                          >📞 {b.telefono2}</a>
-                        )}
-                      </div>
-                    )}
-                    </div>{/* fine inner flex */}
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                    <button className="btn btn-outline btn-sm" onClick={() => apriStats(b)}>📊</button>
-                    {isAdmin && <button className="btn btn-outline btn-sm btn-icon" onClick={() => {
-                      setForm({ nome:b.nome, cognome:b.cognome, data_nascita:b.data_nascita||'', indirizzo:b.indirizzo||'', telefono1:b.telefono1||'', telefono2:b.telefono2||'', note:b.note||'', classe_id:b.classe_id||'' })
-                      setModal(b)
-                    }}>✏️</button>}
-                    {isAdmin && <button className="btn btn-red btn-sm btn-icon" onClick={() => elimina(b.id)}>🗑</button>}
-                  </div>
-                </div>
-              </div>
-            </div>
+      {classi.length > 0 && (
+        <div className="chip-row" style={{ marginBottom:14 }}>
+          <button type="button" className={'chip' + (!filtroClasse ? ' on' : '')} onClick={() => setFiltroClasse('')}>Tutte</button>
+          {classi.map(c => (
+            <button key={c.id} type="button" className={'chip' + (filtroClasse === c.id ? ' on' : '')} onClick={() => setFiltroClasse(filtroClasse === c.id ? '' : c.id)}>{c.nome}</button>
           ))}
-          {filtrati.length === 0 && <div className="empty-state"><div className="icon">👦</div><p>Nessun bambino trovato</p></div>}
         </div>
       )}
+
+      <div style={{ display:'flex', gap:8, marginBottom:6, flexWrap:'wrap' }}>
+        <span className="badge badge-gray">{filtrati.length} bambini</span>
+        {incompleti > 0
+          ? <span className="badge badge-red">{incompleti} con dati incompleti</span>
+          : filtrati.length > 0 && <span className="badge badge-green">tutti completi</span>}
+      </div>
+
+      {loading ? <div className="loader"><div className="spinner"/></div> :
+        filtrati.length === 0 ? (
+          <div className="empty-state"><Icon name="bambini" size={44} style={{ color:'var(--gray-300)' }}/><p style={{ marginTop:12 }}>Nessun bambino trovato</p></div>
+        ) : gruppi.map(g => (
+          <div key={g.id || 'senza'}>
+            <div className="grp-head">
+              <Icon name="classi" size={18} style={{ color: g.id ? 'var(--primary)' : 'var(--gray-400)' }} />
+              {g.nome}
+              <span className="n">{g.membri.length}</span>
+            </div>
+
+            <div className="card" style={{ overflow:'hidden' }}>
+              <div className="table-wrap only-desk">
+                <table className="bimbi-table">
+                  <thead>
+                    <tr>
+                      <th>Cognome e nome</th><th>Nascita</th><th>Telefono</th><th>Indirizzo</th><th>Stato dati</th><th style={{ textAlign:'right' }}>Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.membri.map(b => {
+                      const m = datiMancanti(b)
+                      return (
+                        <tr key={b.id}>
+                          <td style={{ fontWeight:700 }}>{b.cognome} {b.nome}{b.note && <span title={b.note} style={{ color:'var(--red)', marginLeft:6 }}>&#9679;</span>}</td>
+                          <td className={b.data_nascita ? '' : 'text-muted'}>{b.data_nascita ? fmtNasc(b.data_nascita) : '—'}</td>
+                          <td>{b.telefono1 ? <a href={'tel:'+b.telefono1}>{b.telefono1}</a> : <span className="text-muted">—</span>}</td>
+                          <td className={b.indirizzo ? '' : 'text-muted'} style={{ maxWidth:200, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{b.indirizzo || '—'}</td>
+                          <td>
+                            {m.length === 0
+                              ? <span className="ok-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Completo</span>
+                              : m.map(x => <span key={x} className="miss">manca {x}</span>)}
+                          </td>
+                          <td>{RigaAzioni(b)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="only-mob">
+                {g.membri.map((b, i) => {
+                  const m = datiMancanti(b)
+                  return (
+                    <div key={b.id} style={{ padding:'12px 14px', borderBottom: i < g.membri.length-1 ? '1px solid var(--gray-100)' : 'none' }}>
+                      <div className="flex items-center justify-between">
+                        <div style={{ minWidth:0, flex:1 }}>
+                          <div style={{ fontWeight:800 }}>{b.cognome} {b.nome}</div>
+                          <div className="text-xs text-muted" style={{ marginTop:2 }}>
+                            {b.data_nascita ? 'n. ' + fmtNasc(b.data_nascita) : ''}
+                            {b.telefono1 ? (b.data_nascita ? ' · ' : '') + b.telefono1 : ''}
+                          </div>
+                          <div style={{ marginTop:6 }}>
+                            {m.length === 0
+                              ? <span className="ok-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Completo</span>
+                              : m.map(x => <span key={x} className="miss">manca {x}</span>)}
+                          </div>
+                        </div>
+                        {RigaAzioni(b)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        ))
+      }
 
       {/* Modal statistiche bambino */}
       {modalStats && (
         <div className="modal-overlay" onClick={() => setModalStats(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-handle"/>
-            <div className="modal-title">📊 {modalStats.cognome} {modalStats.nome}</div>
+            <div className="modal-title">Presenze di {modalStats.cognome} {modalStats.nome}</div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
               <div style={{ background:'var(--primary-bg)', borderRadius:10, padding:'12px', textAlign:'center' }}>
                 <div style={{ fontWeight:800, fontSize:'1.6rem', color:'var(--primary)' }}>{statsData.filter(p=>p.stato==='P').length}</div>
