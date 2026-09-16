@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 
-const COLORI = ['#1a6b3c','#2980b9','#8e44ad','#e67e22','#e74c3c','#16a085','#2c3e50','#f39c12']
+const COLORI = ['#4d7058','#2980b9','#8e44ad','#e67e22','#e74c3c','#16a085','#2c3e50','#f39c12']
 
 const vuoto = { classe_id: '', data: new Date().toISOString().split('T')[0], titolo: '', testo: '' }
 

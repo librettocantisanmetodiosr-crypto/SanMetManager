@@ -173,7 +173,7 @@ export default function Scalette() {
               const attivo = cantoAttivo === c.id
               return (
                 <div key={sc.id} className="card"
-                  style={{ borderLeft:`3px solid ${attivo ? 'var(--primary)' : 'var(--gray-200)'}`, background: attivo ? '#f0faf4' : '#fff' }}>
+                  style={{ borderLeft:`3px solid ${attivo ? 'var(--primary)' : 'var(--gray-200)'}`, background: attivo ? '#eef4ef' : '#fff' }}>
                   <div className="card-body" style={{ padding:'10px 12px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <div style={{ color:'var(--gray-300)', fontWeight:800, fontSize:'0.85rem', minWidth:22, textAlign:'center', flexShrink:0 }}>{idx+1}</div>

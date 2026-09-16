@@ -87,14 +87,14 @@ export default function ReportPresenze() {
     let html = `<!DOCTYPE html><html><head><meta charset="utf-8">
     <style>
       body { font-family: Arial, sans-serif; font-size: 9px; margin: 10mm; }
-      h2 { color: #1a6b3c; margin-bottom: 4px; }
+      h2 { color: #4d7058; margin-bottom: 4px; }
       p.sub { color: #888; margin-bottom: 8px; }
       table { width:100%; border-collapse:collapse; }
-      th { background:#1a6b3c; color:#fff; padding:4px 6px; font-size:8px; white-space:nowrap; }
+      th { background:#4d7058; color:#fff; padding:4px 6px; font-size:8px; white-space:nowrap; }
       td { padding:3px 6px; border-bottom:1px solid #e5e7eb; }
-      tr:nth-child(even) td { background:#f9fafb; }
-      .P { color:#1a6b3c; font-weight:bold; }
-      .A { color:#c62828; font-weight:bold; }
+      tr:nth-child(even) td { background:#f6f5f1; }
+      .P { color:#4d7058; font-weight:bold; }
+      .A { color:#a5654f; font-weight:bold; }
       .tot { font-weight:bold; background:#f0fdf4 !important; }
       @media print { @page { margin: 8mm; size: landscape; } }
     </style></head><body>

@@ -38,7 +38,7 @@ export default function Bacheca() {
     toast('Avviso eliminato', 'success'); carica()
   }
 
-  const colori = { tutti:'var(--primary)', catechisti:'var(--blue)', segreteria:'var(--red)', comitato:'var(--blue)', coro:'#f59e0b', neocatecumenali:'var(--red)' }
+  const colori = { tutti:'var(--primary)', catechisti:'var(--blue)', segreteria:'var(--red)', comitato:'var(--blue)', coro:'#a5654f', neocatecumenali:'var(--red)' }
 
   return (
     <div style={{ padding:16 }}>

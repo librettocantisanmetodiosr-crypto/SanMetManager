@@ -12,18 +12,18 @@ const TEMPI = ['Avvento','Natale','Quaresima','Pasqua','Tempo Ordinario','Feste 
 const SEZIONI = ['Ritornello','Strofa 1','Strofa 2','Strofa 3','Bridge','Intro','Coda','Fine']
 
 const MOMENTO_COLOR = {
-  'Ingresso':'#1565c0','Kyrie':'#0891b2','Gloria':'#d97706',
-  'Salmo':'#059669','Alleluia':'#16a34a','Offertorio':'#f59e0b',
-  'Santo':'#2563eb','Agnello di Dio':'#7c3aed','Comunione':'#1a6b3c',
-  'Ringraziamento':'#0d6b3c','Uscita':'#c62828','Adorazione':'#7c3aed',
-  'Mariano':'#db2777','Altro':'#6b7280',
+  'Ingresso':'#6e88a2','Kyrie':'#5f8f95','Gloria':'#977f52',
+  'Salmo':'#5a8b74','Alleluia':'#5f8a5f','Offertorio':'#8b83a3',
+  'Santo':'#6b7fae','Agnello di Dio':'#8375a8','Comunione':'#4d7058',
+  'Ringraziamento':'#4f7d6a','Uscita':'#a5654f','Adorazione':'#9a7fa0',
+  'Mariano':'#a0708c','Altro':'#8a887e',
 }
 
 const ACCORDI_GRUPPI = [
-  { label:'Magg.', col:'#1a6b3c',  list:['Do','Re','Mi','Fa','Sol','La','Si'] },
-  { label:'Min.',  col:'#1565c0',  list:['Dom','Rem','Mim','Fam','Solm','Lam','Sim'] },
-  { label:'Sett.', col:'#d97706',  list:['Do7','Re7','Mi7','Fa7','Sol7','La7','Si7'] },
-  { label:'Alt.',  col:'#7c3aed',  list:['Do#','Re#','Fa#','Sol#','La#','Sib','Mib','Lab'] },
+  { label:'Magg.', col:'#4d7058',  list:['Do','Re','Mi','Fa','Sol','La','Si'] },
+  { label:'Min.',  col:'#6e88a2',  list:['Dom','Rem','Mim','Fam','Solm','Lam','Sim'] },
+  { label:'Sett.', col:'#977f52',  list:['Do7','Re7','Mi7','Fa7','Sol7','La7','Si7'] },
+  { label:'Alt.',  col:'#8375a8',  list:['Do#','Re#','Fa#','Sol#','La#','Sib','Mib','Lab'] },
 ]
 
 // ── Trasposizione ────────────────────────────────────────────────
@@ -160,7 +160,7 @@ function TestoFormattato({ testo, fontSize = 15 }) {
               <span key={j} style={{ display:'inline-block', whiteSpace:'pre' }}>
                 <div style={{
                   fontFamily:'Nunito, monospace', fontWeight:900,
-                  color:'#1565c0', fontSize: fontSize * 0.8,
+                  color:'#a5654f', fontSize: fontSize * 0.8,
                   lineHeight:1, minHeight: fontSize * 1.15,
                   letterSpacing:'0.01em',
                 }}>
@@ -811,7 +811,7 @@ export default function Canti() {
     const attivo = cantoAttivo === c.id
     return (
       <div key={c.id} className="card"
-        style={{ borderLeft:`3px solid ${attivo ? 'var(--primary)' : col}`, background: attivo ? '#f0faf4' : '#fff', cursor:'pointer' }}
+        style={{ borderLeft:`3px solid ${attivo ? 'var(--primary)' : col}`, background: attivo ? '#eef4ef' : '#fff', cursor:'pointer' }}
         onClick={() => { setVistaModal(c); setVistaPdf(!!c.pdf_url && !c.testo); setTransposeOffset(0) }}>
         <div className="card-body" style={{ padding:'11px 14px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -826,7 +826,7 @@ export default function Canti() {
             </div>
             <div style={{ display:'flex', gap:5, flexShrink:0 }} onClick={e => e.stopPropagation()}>
               <button className="btn btn-ghost btn-sm btn-icon"
-                style={{ color: preferiti.has(c.id) ? '#f59e0b' : 'var(--gray-300)', fontSize:'1.1rem', padding:'4px 5px' }}
+                style={{ color: preferiti.has(c.id) ? '#a5654f' : 'var(--gray-300)', fontSize:'1.1rem', padding:'4px 5px' }}
                 onClick={() => togglePreferito(c.id)}>
                 {preferiti.has(c.id) ? '★' : '☆'}
               </button>
@@ -907,8 +907,8 @@ export default function Canti() {
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             <button onClick={() => setSoloPreferiti(p => !p)} className="btn btn-sm"
-              style={{ background: soloPreferiti ? '#f59e0b' : '#fff', color: soloPreferiti ? '#fff' : 'var(--gray-600)',
-                border:'1.5px solid', borderColor: soloPreferiti ? '#f59e0b' : 'var(--gray-200)',
+              style={{ background: soloPreferiti ? '#a5654f' : '#fff', color: soloPreferiti ? '#fff' : 'var(--gray-600)',
+                border:'1.5px solid', borderColor: soloPreferiti ? '#a5654f' : 'var(--gray-200)',
                 flexShrink:0, fontWeight:800, fontSize:'0.8rem', padding:'6px 10px' }}>
               {soloPreferiti ? '★' : '☆'} Preferiti
             </button>
@@ -973,7 +973,7 @@ export default function Canti() {
               </button>
               <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                 <button className="btn btn-ghost btn-icon"
-                  style={{ color: preferiti.has(vistaModal.id) ? '#f59e0b' : 'var(--gray-400)', fontSize:'1.4rem', minWidth:44, minHeight:44 }}
+                  style={{ color: preferiti.has(vistaModal.id) ? '#a5654f' : 'var(--gray-400)', fontSize:'1.4rem', minWidth:44, minHeight:44 }}
                   onClick={() => togglePreferito(vistaModal.id)}>
                   {preferiti.has(vistaModal.id) ? '★' : '☆'}
                 </button>
@@ -1014,15 +1014,15 @@ export default function Canti() {
                 <div style={{ width:1, height:24, background:'var(--gray-200)', margin:'0 4px', flexShrink:0 }}/>
 
                 <button onClick={() => setTransposeOffset(n => n-1)}
-                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid #1565c0', background:'#fff', fontWeight:900, cursor:'pointer', color:'#1565c0', flexShrink:0, fontSize:'1.1rem' }}>♭</button>
+                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid #6e88a2', background:'#fff', fontWeight:900, cursor:'pointer', color:'#6e88a2', flexShrink:0, fontSize:'1.1rem' }}>♭</button>
                 <div style={{ textAlign:'center', minWidth:34, fontSize:'0.75rem', fontWeight:800,
-                  color: transposeOffset !== 0 ? '#1565c0' : 'var(--gray-400)',
+                  color: transposeOffset !== 0 ? '#6e88a2' : 'var(--gray-400)',
                   background: transposeOffset !== 0 ? '#e8f0fe' : 'transparent',
                   borderRadius:6, padding:'2px 4px' }}>
                   {transposeOffset === 0 ? 'Ton.' : (transposeOffset > 0 ? `+${transposeOffset}` : `${transposeOffset}`)}
                 </div>
                 <button onClick={() => setTransposeOffset(n => n+1)}
-                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid #1565c0', background:'#fff', fontWeight:900, cursor:'pointer', color:'#1565c0', flexShrink:0, fontSize:'1.1rem' }}>♯</button>
+                  style={{ width:34, height:34, borderRadius:8, border:'1.5px solid #6e88a2', background:'#fff', fontWeight:900, cursor:'pointer', color:'#6e88a2', flexShrink:0, fontSize:'1.1rem' }}>♯</button>
                 {transposeOffset !== 0 && (
                   <button onClick={() => setTransposeOffset(0)}
                     style={{ width:34, height:34, borderRadius:8, border:'1.5px solid var(--gray-200)', background:'#fff', cursor:'pointer', fontSize:'0.9rem', flexShrink:0 }}>↺</button>
@@ -1260,7 +1260,7 @@ export default function Canti() {
                     {modoEditor === 'testo' && !showPreview && (
                       <button type="button" className="btn btn-sm"
                         onClick={entraChordsMode}
-                        style={{ background:'#1565c0', color:'#fff', fontWeight:700, fontSize:'0.78rem', padding:'4px 10px', borderRadius:8 }}
+                        style={{ background:'#6e88a2', color:'#fff', fontWeight:700, fontSize:'0.78rem', padding:'4px 10px', borderRadius:8 }}
                         disabled={!form.testo.trim()}>
                         🎸 Accordi
                       </button>
@@ -1308,7 +1308,7 @@ export default function Canti() {
 
                 {modoEditor === 'accordi' && (
                   <>
-                    <div className="text-xs text-muted" style={{ marginBottom:8, padding:'6px 10px', background:'#e8f0fe', borderRadius:8, color:'#1565c0', fontWeight:600 }}>
+                    <div className="text-xs text-muted" style={{ marginBottom:8, padding:'6px 10px', background:'#e8f0fe', borderRadius:8, color:'#6e88a2', fontWeight:600 }}>
                       Tocca una parola per aggiungere o cambiare l'accordo sopra di essa
                     </div>
 
@@ -1340,9 +1340,9 @@ export default function Canti() {
                                     minHeight:24, minWidth:28,
                                     padding:'1px 4px', borderRadius:5, marginBottom:1,
                                     fontSize:'0.79rem', fontWeight:900, lineHeight:1.4,
-                                    color: chord ? '#1565c0' : (isActive ? 'var(--primary)' : 'var(--gray-300)'),
+                                    color: chord ? '#6e88a2' : (isActive ? 'var(--primary)' : 'var(--gray-300)'),
                                     background: isActive ? 'var(--primary-bg)' : (chord ? '#e8f0fe' : 'transparent'),
-                                    border: `1.5px solid ${isActive ? 'var(--primary)' : (chord ? '#1565c0' : 'transparent')}`,
+                                    border: `1.5px solid ${isActive ? 'var(--primary)' : (chord ? '#6e88a2' : 'transparent')}`,
                                     textAlign:'center', transition:'all 0.1s',
                                   }}>
                                     {chord || (isActive ? '···' : '+')}
@@ -1357,10 +1357,10 @@ export default function Canti() {
                     </div>
 
                     {wordAttiva ? (
-                      <div style={{ background:'#fff', borderRadius:12, padding:12, border:'1.5px solid #1565c0', boxShadow:'0 4px 16px rgba(21,101,192,0.15)' }}>
+                      <div style={{ background:'#fff', borderRadius:12, padding:12, border:'1.5px solid #6e88a2', boxShadow:'0 4px 16px rgba(21,101,192,0.15)' }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
                           <span style={{ fontSize:'0.82rem', fontWeight:700, color:'var(--gray-700)' }}>
-                            Accordo per: <strong style={{ color:'#1565c0' }}>
+                            Accordo per: <strong style={{ color:'#6e88a2' }}>
                               {lineeParole.flatMap(l => l.words || []).find(w => w.id === wordAttiva)?.text}
                             </strong>
                           </span>
