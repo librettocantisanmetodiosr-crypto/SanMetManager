@@ -35,6 +35,7 @@ const SEZIONI = [
       { path: '/coro/canti',    label: 'Canti',    icon: 'canti' },
       { path: '/coro/scalette', label: 'Scalette', icon: 'scalette' },
       { path: '/coro/coristi',  label: 'Coristi',  icon: 'coristi', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
+      { path: '/coro/archivio', label: 'Archivio',  icon: 'lettere', ruoli: ['admin','parroco','responsabile_coro'] },
     ]
   },
   {

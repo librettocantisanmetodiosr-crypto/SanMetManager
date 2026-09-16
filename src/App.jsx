@@ -19,6 +19,7 @@ import CatClassi from './pages/catechismo/Classi'
 import CatBambini from './pages/catechismo/Bambini'
 import CatIscrizioni from './pages/catechismo/Iscrizioni'
 import AdminPermessi from './pages/admin/Permessi'
+import CoroArchivio from './pages/coro/Archivio'
 import CatPresenze from './pages/catechismo/Presenze'
 import CatDate from './pages/catechismo/Date'
 import CatUtenti from './pages/catechismo/Utenti'
@@ -81,6 +82,7 @@ function AppRoutes() {
         <Route path="comitato/lettere"    element={<ProtectedRoute ruoli={['admin','parroco','responsabile_comitato']}><ComLettere /></ProtectedRoute>} />
         <Route path="comitato/rubrica"    element={<ProtectedRoute ruoli={['admin','parroco','responsabile_comitato']}><ComRubrica /></ProtectedRoute>} />
         {/* Coro */}
+        <Route path="coro/archivio" element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro']}><CoroArchivio /></ProtectedRoute>} />
         <Route path="coro/canti"    element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista']}><CoroCanti /></ProtectedRoute>} />
         <Route path="coro/scalette" element={<CoroScalette />} />
         <Route path="coro/coristi"  element={<ProtectedRoute ruoli={['admin','parroco','responsabile_coro']}><CoroCoristi /></ProtectedRoute>} />
