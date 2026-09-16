@@ -10,6 +10,7 @@ const SEZIONI = [
     voci: [
       { path: '/catechismo/presenze',  label: 'Presenze',  icon: 'presenze' },
       { path: '/catechismo/bambini',   label: 'Bambini',   icon: 'bambini' },
+      { path: '/catechismo/iscrizioni', label: 'Iscrizioni', icon: 'comunita', ruoli: ['admin','parroco','segreteria'] },
       { path: '/catechismo/attivita',  label: 'Diario',    icon: 'diario' },
       { path: '/catechismo/classi',    label: 'Classi',    icon: 'classi' },
       { path: '/catechismo/report',    label: 'Report',    icon: 'report' },
