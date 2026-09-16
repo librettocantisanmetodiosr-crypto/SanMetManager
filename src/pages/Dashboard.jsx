@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
+import Icon from '../components/Icon'
 
 export default function Dashboard() {
   const { profilo, tuttiRuoli } = useAuth()
@@ -42,15 +43,15 @@ export default function Dashboard() {
   const saluto = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'
 
   const shortcuts = [
-    hasCatechismo && { icon: '✅', label: 'Presenze', path: '/catechismo/presenze', color: 'var(--primary)' },
-    hasCatechismo && { icon: '👦', label: 'Bambini', path: '/catechismo/bambini', color: 'var(--primary)' },
-    hasCatechismo && { icon: '📝', label: 'Diario', path: '/catechismo/attivita', color: 'var(--primary)' },
-    isAdmin        && { icon: '🏫', label: 'Classi', path: '/catechismo/classi', color: 'var(--primary)' },
-    hasComitato    && { icon: '🗓️', label: 'Calendario', path: '/comitato/calendario', color: 'var(--blue)' },
-    hasComitaEdit  && { icon: '📄', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
-    hasCoro        && { icon: '🎵', label: 'Canti', path: '/coro/canti', color: 'var(--gold)' },
-    hasNeo         && { icon: '🚪', label: 'Stanze', path: '/neo/stanze', color: 'var(--red)' },
-    isAdmin        && { icon: '👤', label: 'Utenti', path: '/admin/utenti', color: 'var(--gray-700)' },
+    hasCatechismo && { icon: 'presenze', label: 'Presenze', path: '/catechismo/presenze', color: 'var(--primary)' },
+    hasCatechismo && { icon: 'bambini', label: 'Bambini', path: '/catechismo/bambini', color: 'var(--primary)' },
+    hasCatechismo && { icon: 'diario', label: 'Diario', path: '/catechismo/attivita', color: 'var(--primary)' },
+    isAdmin        && { icon: 'classi', label: 'Classi', path: '/catechismo/classi', color: 'var(--primary)' },
+    hasComitato    && { icon: 'calendario', label: 'Calendario', path: '/comitato/calendario', color: 'var(--blue)' },
+    hasComitaEdit  && { icon: 'lettere', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
+    hasCoro        && { icon: 'canti', label: 'Canti', path: '/coro/canti', color: 'var(--gold)' },
+    hasNeo         && { icon: 'stanze', label: 'Stanze', path: '/neo/stanze', color: 'var(--red)' },
+    isAdmin        && { icon: 'utenti', label: 'Utenti', path: '/admin/utenti', color: 'var(--gray-700)' },
   ].filter(Boolean)
 
   return (
@@ -106,7 +107,7 @@ export default function Dashboard() {
                 onTouchStart={e => e.currentTarget.style.transform = 'scale(0.95)'}
                 onTouchEnd={e => e.currentTarget.style.transform = 'scale(1)'}
               >
-                <div style={{ fontSize: '1.5rem', marginBottom: 5 }}>{s.icon}</div>
+                <div style={{ marginBottom: 7, color: s.color, display: 'flex', justifyContent: 'center' }}><Icon name={s.icon} size={26} /></div>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: s.color, lineHeight: 1.2 }}>{s.label}</div>
               </button>
             ))}

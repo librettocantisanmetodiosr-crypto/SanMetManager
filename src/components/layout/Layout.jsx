@@ -1,55 +1,56 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
+import Icon from '../Icon'
 
 const SEZIONI = [
   {
-    key: 'catechismo', label: 'Catechismo', icon: '📚', color: 'var(--primary)',
+    key: 'catechismo', label: 'Catechismo', icon: 'catechismo', color: 'var(--primary)',
     ruoli: ['admin','parroco','segreteria','catechista','responsabile'],
     voci: [
-      { path: '/catechismo/presenze',  label: 'Presenze',  icon: '✅' },
-      { path: '/catechismo/bambini',   label: 'Bambini',   icon: '👦' },
-      { path: '/catechismo/attivita',  label: 'Diario',    icon: '📝' },
-      { path: '/catechismo/classi',    label: 'Classi',    icon: '🏫' },
-      { path: '/catechismo/report',    label: 'Report',    icon: '📊' },
-      { path: '/catechismo/date',      label: 'Date',      icon: '📅', ruoli: ['admin','parroco','segreteria','responsabile'] },
-      { path: '/catechismo/supplenze', label: 'Supplenze', icon: '🔄', ruoli: ['admin','parroco','segreteria','responsabile'] },
-      { path: '/bacheca',              label: 'Bacheca',   icon: '📌' },
+      { path: '/catechismo/presenze',  label: 'Presenze',  icon: 'presenze' },
+      { path: '/catechismo/bambini',   label: 'Bambini',   icon: 'bambini' },
+      { path: '/catechismo/attivita',  label: 'Diario',    icon: 'diario' },
+      { path: '/catechismo/classi',    label: 'Classi',    icon: 'classi' },
+      { path: '/catechismo/report',    label: 'Report',    icon: 'report' },
+      { path: '/catechismo/date',      label: 'Date',      icon: 'date', ruoli: ['admin','parroco','segreteria','responsabile'] },
+      { path: '/catechismo/supplenze', label: 'Supplenze', icon: 'supplenze', ruoli: ['admin','parroco','segreteria','responsabile'] },
+      { path: '/bacheca',              label: 'Bacheca',   icon: 'bacheca' },
     ]
   },
   {
-    key: 'comitato', label: 'Comitato', icon: '📋', color: 'var(--blue)',
+    key: 'comitato', label: 'Comitato', icon: 'comitato', color: 'var(--blue)',
     ruoli: ['admin','parroco','comitato','responsabile_comitato','responsabile'],
     voci: [
-      { path: '/comitato/calendario', label: 'Calendario', icon: '🗓️' },
-      { path: '/comitato/lettere',    label: 'Lettere',    icon: '📄', ruoli: ['admin','parroco','responsabile_comitato','responsabile'] },
-      { path: '/comitato/rubrica',    label: 'Rubrica',    icon: '📇', ruoli: ['admin','parroco','responsabile_comitato','responsabile'] },
+      { path: '/comitato/calendario', label: 'Calendario', icon: 'calendario' },
+      { path: '/comitato/lettere',    label: 'Lettere',    icon: 'lettere', ruoli: ['admin','parroco','responsabile_comitato','responsabile'] },
+      { path: '/comitato/rubrica',    label: 'Rubrica',    icon: 'rubrica', ruoli: ['admin','parroco','responsabile_comitato','responsabile'] },
     ]
   },
   {
-    key: 'coro', label: 'Coro', icon: '🎵', color: 'var(--gold)',
+    key: 'coro', label: 'Coro', icon: 'coro', color: 'var(--gold)',
     ruoli: ['admin','parroco','responsabile_coro','corista','neocatecumenale','responsabile_neo','comitato','segreteria','catechista','responsabile'],
     voci: [
-      { path: '/coro/canti',    label: 'Canti',    icon: '🎶' },
-      { path: '/coro/scalette', label: 'Scalette', icon: '🎼' },
-      { path: '/coro/coristi',  label: 'Coristi',  icon: '🎤', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
+      { path: '/coro/canti',    label: 'Canti',    icon: 'canti' },
+      { path: '/coro/scalette', label: 'Scalette', icon: 'scalette' },
+      { path: '/coro/coristi',  label: 'Coristi',  icon: 'coristi', ruoli: ['admin','parroco','responsabile_coro','responsabile'] },
     ]
   },
   {
-    key: 'neo', label: 'Neocatec.', icon: '✝️', color: 'var(--red)',
+    key: 'neo', label: 'Neocatec.', icon: 'neocatecumenali', color: 'var(--red)',
     ruoli: ['admin','parroco','neocatecumenale','responsabile_neo','responsabile'],
     voci: [
-      { path: '/neo/comunita', label: 'Comunità', icon: '🕊️' },
-      { path: '/neo/stanze',   label: 'Stanze',   icon: '🚪' },
-      { path: '/neo/avvisi',   label: 'Avvisi',   icon: '📢' },
+      { path: '/neo/comunita', label: 'Comunità', icon: 'comunita' },
+      { path: '/neo/stanze',   label: 'Stanze',   icon: 'stanze' },
+      { path: '/neo/avvisi',   label: 'Avvisi',   icon: 'avvisi' },
     ]
   },
   {
-    key: 'admin', label: 'Amministrazione', icon: '⚙️', color: 'var(--gray-700)',
+    key: 'admin', label: 'Amministrazione', icon: 'amministrazione', color: 'var(--gray-700)',
     ruoli: ['admin','parroco','segreteria','responsabile'],
     voci: [
-      { path: '/admin/utenti',    label: 'Utenti',    icon: '👤' },
-      { path: '/admin/attivita',  label: 'Attività',  icon: '📋', ruoli: ['admin'] },
+      { path: '/admin/utenti',    label: 'Utenti',    icon: 'utenti' },
+      { path: '/admin/attivita',  label: 'Attività',  icon: 'attivita', ruoli: ['admin'] },
     ]
   },
 ]
@@ -111,7 +112,7 @@ export default function Layout() {
         boxShadow:'var(--shadow-sm)'
       }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <button className="btn btn-ghost btn-icon" onClick={() => setDrawerOpen(true)} style={{ fontSize:'1.2rem' }}>☰</button>
+          <button className="btn btn-ghost btn-icon" onClick={() => setDrawerOpen(true)} style={{ fontSize:'1.2rem' }}><Icon name="menu" size={22} /></button>
           <div>
             <div style={{ fontFamily:'Cinzel, serif', fontSize:'0.9rem', fontWeight:600, color:'var(--primary)', lineHeight:1 }}>
               SanMetManager
@@ -123,7 +124,7 @@ export default function Layout() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <NavLink to="/bacheca">
-            <button className="btn btn-ghost btn-icon">📌</button>
+            <button className="btn btn-ghost btn-icon"><Icon name="bacheca" /></button>
           </NavLink>
           <div
             onClick={() => setDrawerOpen(true)}
@@ -164,7 +165,7 @@ export default function Layout() {
 
             {/* Voci menu */}
             <div style={{ padding:'8px 0' }}>
-              <DrawerLink to="/" icon="🏠" label="Dashboard" onClick={() => setDrawerOpen(false)} />
+              <DrawerLink to="/" icon="home" label="Dashboard" onClick={() => setDrawerOpen(false)} />
 
               {sezioniVisibili.map(sezione => (
                 <div key={sezione.key}>
@@ -178,9 +179,9 @@ export default function Layout() {
                       background: activeSection === sezione.key ? 'var(--gray-50)' : 'transparent'
                     }}
                   >
-                    <span>{sezione.icon} {sezione.label}</span>
+                    <span style={{ display:'flex', alignItems:'center', gap:11 }}><Icon name={sezione.icon} />{sezione.label}</span>
                     <span style={{ fontSize:'0.7rem', color:'var(--gray-400)' }}>
-                      {activeSection === sezione.key ? '▲' : '▼'}
+                      <Icon name={activeSection === sezione.key ? 'su' : 'giu'} size={15} />
                     </span>
                   </div>
                   {activeSection === sezione.key && sezione.voci.filter(v => canSee(v.ruoli)).map(v => (
@@ -199,7 +200,7 @@ export default function Layout() {
                 onClick={handleLogout}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', cursor:'pointer', color:'var(--red)', fontWeight:700, fontSize:'0.9rem' }}
               >
-                <span>🚪</span> Esci
+                <Icon name="esci" /> Esci
               </div>
             </div>
           </div>
@@ -220,7 +221,7 @@ export default function Layout() {
         display:'flex', boxShadow:'0 -2px 10px rgba(0,0,0,0.06)',
         zIndex:100, paddingBottom:'env(safe-area-inset-bottom)'
       }}>
-        <BottomTab to="/" icon="🏠" label="Home" exact />
+        <BottomTab to="/" icon="home" label="Home" exact />
         {sezioniVisibili.slice(0,3).map(s => (
           <BottomTab
             key={s.key}
@@ -240,7 +241,7 @@ export default function Layout() {
             cursor:'pointer', fontFamily:'Nunito, sans-serif'
           }}
         >
-          <span style={{ fontSize:'1.25rem' }}>☰</span>
+          <Icon name="menu" size={22} />
           Menu
         </button>
       </nav>
@@ -263,7 +264,7 @@ function DrawerLink({ to, icon, label, indent, onClick }) {
         borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent'
       })}
     >
-      <span>{icon}</span>{label}
+      <Icon name={icon} />{label}
     </NavLink>
   )
 }
@@ -282,7 +283,7 @@ function BottomTab({ to, icon, label, exact, color, onClick }) {
         borderTop: isActive ? `2px solid ${color || 'var(--primary)'}` : '2px solid transparent',
       })}
     >
-      <span style={{ fontSize:'1.25rem' }}>{icon}</span>
+      <Icon name={icon} size={22} />
       {label}
     </NavLink>
   )
