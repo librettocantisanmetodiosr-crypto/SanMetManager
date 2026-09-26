@@ -6,6 +6,13 @@ import Icon from '../components/Icon'
 
 const oggiISO = () => new Date().toISOString().split('T')[0]
 
+const ETICHETTA_TURNO = {
+  prima_lettura: 'Prima lettura',
+  salmo: 'Salmo',
+  seconda_lettura: 'Seconda lettura',
+  offertorio: 'Offertorio',
+}
+
 const formattaData = (iso, opts) =>
   new Date(iso + 'T00:00:00').toLocaleDateString('it-IT',
     opts || { weekday: 'long', day: 'numeric', month: 'long' })
@@ -17,6 +24,7 @@ export default function Dashboard() {
   const [bacheca, setBacheca] = useState([])
   const [riepilogo, setRiepilogo] = useState(null)
   const [eventi, setEventi] = useState([])
+  const [mieiTurni, setMieiTurni] = useState([])
 
   const isAdmin = ['admin','parroco','segreteria'].some(r => tuttiRuoli.includes(r))
   const hasCatechismo = ['admin','parroco','segreteria','catechista','responsabile'].some(r => tuttiRuoli.includes(r))
@@ -29,6 +37,7 @@ export default function Dashboard() {
     if (!profilo) return
     caricaBacheca()
     caricaEventi()
+    caricaMieiTurni()
     if (isAdmin) caricaStats()
     if (hasCatechismo) caricaRiepilogo()
   }, [profilo])
@@ -68,6 +77,20 @@ export default function Dashboard() {
       registrate,
       totBambini: bamb.count || 0,
     })
+  }
+
+
+  // I miei prossimi turni di lettura/offertorio (solo da piani approvati)
+  const caricaMieiTurni = async () => {
+    const { data } = await supabase.from('turni')
+      .select('id, ruolo, posizione, data_id, date_catechismo(data), piani_turni(stato)')
+      .eq('profilo_id', profilo.id)
+    const oggi = oggiISO()
+    const prossimi = (data || [])
+      .filter(t => t.piani_turni?.stato === 'approvato' && t.date_catechismo?.data >= oggi)
+      .sort((a, b) => a.date_catechismo.data.localeCompare(b.date_catechismo.data))
+      .slice(0, 3)
+    setMieiTurni(prossimi)
   }
 
   const caricaEventi = async () => {
@@ -126,6 +149,54 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* IL TUO TURNO — grande e in cima, per chi non ha dimestichezza */}
+      {mieiTurni.length > 0 && (
+        <div style={{
+          background: 'var(--primary)', borderRadius: 16, marginBottom: 20,
+          padding: '22px 24px', color: '#fff',
+          boxShadow: '0 4px 16px rgba(77,112,88,.28)',
+        }}>
+          <div style={{
+            fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.12em',
+            textTransform: 'uppercase', opacity: 0.85, marginBottom: 14,
+          }}>
+            {mieiTurni.length === 1 ? 'Il tuo turno in chiesa' : 'I tuoi prossimi turni in chiesa'}
+          </div>
+
+          {mieiTurni.map((t, i) => {
+            const d = new Date(t.date_catechismo.data + 'T00:00:00')
+            const giorno = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+            return (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'center', gap: 16,
+                paddingTop: i > 0 ? 16 : 0, marginTop: i > 0 ? 16 : 0,
+                borderTop: i > 0 ? '1px solid rgba(255,255,255,0.22)' : 'none',
+              }}>
+                <div style={{
+                  width: 62, height: 62, borderRadius: 14, flexShrink: 0,
+                  background: 'rgba(255,255,255,0.18)',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', lineHeight: 1.1,
+                }}>
+                  <span style={{ fontSize: '1.7rem', fontWeight: 800 }}>{d.getDate()}</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9 }}>
+                    {d.toLocaleDateString('it-IT', { month: 'short' })}
+                  </span>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, lineHeight: 1.15 }}>
+                    {ETICHETTA_TURNO[t.ruolo] || t.ruolo}
+                  </div>
+                  <div style={{ fontSize: '0.95rem', opacity: 0.9, marginTop: 4, textTransform: 'capitalize' }}>
+                    {giorno}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <div className="dash-grid">
 

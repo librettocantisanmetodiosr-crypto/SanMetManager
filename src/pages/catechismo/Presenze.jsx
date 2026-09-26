@@ -28,7 +28,10 @@ export default function Presenze() {
 
   const caricaClassi = async () => {
     let q = supabase.from('classi').select('id, nome').eq('attiva', true).order('nome')
-    if (!isAdmin && tuttiRuoli.includes('catechista')) {
+    // Chi non e' amministrazione vede SOLO le proprie classi, qualunque sia
+    // l'etichetta del ruolo: prima il filtro si applicava solo a chi era
+    // marcato 'catechista', cosi' chi insegnava con un altro ruolo le vedeva tutte.
+    if (!isAdmin) {
       const { data: cc } = await supabase.from('classi_catechisti').select('classe_id').eq('catechista_id', profilo.id)
       const ids = cc?.map(x => x.classe_id) || []
       const oggi = new Date().toISOString().split('T')[0]
@@ -40,6 +43,7 @@ export default function Presenze() {
           .select('classe_id')
           .eq('catechista_supplente_id', profilo.id)
           .eq('data_id', todayDateId)
+          .in('stato', ['attiva', 'accettata'])
         sup?.forEach(x => supIds.push(x.classe_id))
       }
       const tuttiIds = [...new Set([...ids, ...supIds])]
