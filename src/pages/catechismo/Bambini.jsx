@@ -281,9 +281,9 @@ export default function Bambini() {
   return (
     <div style={{ padding:16, maxWidth:1100, margin:'0 auto' }}>
       <ToastContainer/>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4" style={{ gap:10, flexWrap:'wrap' }}>
         <h1>Bambini</h1>
-        <div style={{ display:'flex', gap:8 }}>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {isAdmin && (
             <button className="btn btn-outline btn-sm" onClick={stampaElenco} style={{ gap:6 }} title="Elenco impaginato da stampare o salvare in PDF">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 17H4a2 2 0 0 1-2-2v-4h20v4a2 2 0 0 1-2 2h-2"/></svg>
