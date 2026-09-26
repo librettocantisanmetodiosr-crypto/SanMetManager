@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
@@ -59,24 +59,36 @@ export default function Presenze() {
   }
 
   const caricaDate = async () => {
+    // In ordine cronologico: prima i sabati vicini, poi i lontani. Prima erano
+    // ordinati al contrario e limitati a 20, quindi con un calendario tutto
+    // futuro venivano caricate solo le date piu' lontane e ottobre spariva.
     const [resGlobali, resExtra] = await Promise.all([
       supabase.from('date_catechismo')
         .select('id, data, descrizione, classe_id')
         .is('classe_id', null)
-        .order('data', { ascending: false })
-        .limit(20),
+        .order('data', { ascending: true })
+        .limit(200),
       classeId
         ? supabase.from('date_catechismo')
             .select('id, data, descrizione, classe_id')
             .eq('classe_id', classeId)
-            .order('data', { ascending: false })
-            .limit(10)
+            .order('data', { ascending: true })
+            .limit(50)
         : Promise.resolve({ data: [] }),
     ])
     const tutte = [...(resGlobali.data || []), ...(resExtra.data || [])]
-      .sort((a, b) => b.data.localeCompare(a.data))
+      .sort((a, b) => a.data.localeCompare(b.data))
     setDate(tutte)
-    if (tutte.length > 0) setDataId(tutte[0].id)
+
+    if (tutte.length > 0) {
+      // Si apre gia' sulla data giusta: oggi se c'e' catechismo, altrimenti
+      // il primo sabato che deve ancora arrivare, altrimenti l'ultimo passato.
+      const oggi = new Date().toISOString().split('T')[0]
+      const scelta = tutte.find(d => d.data === oggi)
+        || tutte.find(d => d.data > oggi)
+        || tutte[tutte.length - 1]
+      setDataId(scelta.id)
+    }
   }
 
   const aggiungiDataExtra = async () => {
@@ -169,6 +181,13 @@ export default function Presenze() {
 
   const dataSelezionata = date.find(d => d.id === dataId) || null
 
+  // Porta in vista la schedina selezionata: con molti sabati finirebbe
+  // fuori schermo nella riga scorrevole.
+  const chipSelRef = useRef(null)
+  useEffect(() => {
+    chipSelRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [dataId, date.length])
+
   return (
     <div style={{ padding: 16 }}>
       <ToastContainer />
@@ -222,6 +241,7 @@ export default function Presenze() {
                     <button
                       key={d.id}
                       type="button"
+                      ref={sel ? chipSelRef : null}
                       className={'date-chip' + (sel ? ' on' : '')}
                       aria-pressed={sel}
                       title={dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (d.descrizione ? ' - ' + d.descrizione : '')}
