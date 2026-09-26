@@ -18,6 +18,7 @@ import CatAttivita from './pages/catechismo/AttivitaClasse'
 import CatClassi from './pages/catechismo/Classi'
 import CatBambini from './pages/catechismo/Bambini'
 import CatIscrizioni from './pages/catechismo/Iscrizioni'
+import CatTurni from './pages/catechismo/Turni'
 import AdminPermessi from './pages/admin/Permessi'
 import CoroArchivio from './pages/coro/Archivio'
 import CatPresenze from './pages/catechismo/Presenze'
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         {/* Catechismo */}
         <Route path="catechismo/classi"   element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista']}><CatClassi /></ProtectedRoute>} />
+        <Route path="catechismo/turni" element={<ProtectedRoute><CatTurni /></ProtectedRoute>} />
         <Route path="catechismo/iscrizioni" element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatIscrizioni /></ProtectedRoute>} />
         <Route path="catechismo/bambini"  element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista']}><CatBambini /></ProtectedRoute>} />
         <Route path="catechismo/presenze" element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista']}><CatPresenze /></ProtectedRoute>} />

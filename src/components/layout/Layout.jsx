@@ -16,6 +16,7 @@ const SEZIONI = [
       { path: '/catechismo/report',    label: 'Report',    icon: 'report' },
       { path: '/catechismo/date',      label: 'Date',      icon: 'date', ruoli: ['admin','parroco','segreteria','responsabile'] },
       { path: '/catechismo/supplenze', label: 'Supplenze', icon: 'supplenze', ruoli: ['admin','parroco','segreteria','responsabile'] },
+      { path: '/catechismo/turni',     label: 'Turni',     icon: 'date' },
       { path: '/bacheca',              label: 'Bacheca',   icon: 'bacheca' },
     ]
   },
