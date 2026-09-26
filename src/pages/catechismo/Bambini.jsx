@@ -27,7 +27,9 @@ export default function Bambini() {
 
   const carica = async () => {
     setLoading(true)
-    const { data: cl } = await supabase.from('classi').select('id, nome').eq('attiva', true).order('nome')
+    const { data: cl } = await supabase.from('classi')
+      .select('id, nome, anno_cammino, classi_catechisti(profili(nome, cognome))')
+      .eq('attiva', true).order('nome')
     setClassi(cl || [])
 
     let q = supabase.from('bambini')
@@ -133,6 +135,100 @@ export default function Bambini() {
     toast('Export completato ✓', 'success')
   }
 
+
+  // Anno catechistico corrente (da settembre a giugno)
+  const annoCatechistico = () => {
+    const d = new Date()
+    const y = d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1
+    return `${y}-${y + 1}`
+  }
+
+  const catechistiDi = (classe) =>
+    (classe?.classi_catechisti || [])
+      .map(cc => `${cc.profili?.nome ?? ''} ${cc.profili?.cognome ?? ''}`.trim())
+      .filter(Boolean).join(' - ') || '—'
+
+  const fmtGG = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('it-IT') : ''
+
+  // Elenco da stampare o salvare in PDF, impaginato come il foglio cartaceo
+  const stampaElenco = () => {
+    const gruppiStampa = gruppi.length ? gruppi : [{ id: null, nome: 'Senza classe', membri: filtrati }]
+    const esc = (t) => String(t ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+
+    const sezioni = gruppiStampa.map(g => {
+      const classe = classi.find(c => c.id === g.id)
+      const righe = g.membri.map((b, i) => `
+        <tr>
+          <td class="n">${i + 1}</td>
+          <td class="b">${esc(b.cognome)}</td>
+          <td>${esc(b.nome)}</td>
+          <td>${fmtGG(b.data_nascita)}</td>
+          <td>${esc(b.indirizzo)}</td>
+          <td>${esc(b.telefono1 || b.telefono2)}</td>
+        </tr>`).join('')
+      return `
+        <section>
+          <div class="intestazione">
+            <div class="titolo">PARROCCHIA SAN METODIO &ndash; SIRACUSA</div>
+            <div class="riga">
+              <span><b>ANNO CATECHISTICO</b> ${annoCatechistico()}</span>
+              <span><b>CATECHISTA</b> ${esc(catechistiDi(classe))}</span>
+              <span><b>${esc(g.nome)}</b></span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr><th class="n">N</th><th>COGNOME</th><th>NOME</th><th>DATA</th><th>INDIRIZZO</th><th>TELEFONO</th></tr>
+            </thead>
+            <tbody>${righe}</tbody>
+          </table>
+          <div class="pie">${g.membri.length} bambini &middot; stampato il ${new Date().toLocaleDateString('it-IT')}</div>
+        </section>`
+    }).join('')
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Elenco bambini</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #000; margin: 0; }
+  section { page-break-after: always; }
+  section:last-child { page-break-after: auto; }
+  .titolo { font-size: 15pt; font-weight: bold; text-align: center; margin-bottom: 8px; }
+  .riga { display: flex; justify-content: space-between; gap: 12px; font-size: 9.5pt; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  th, td { border: 1px solid #000; padding: 4px 6px; text-align: left; }
+  th { background: #eee; font-size: 8.5pt; letter-spacing: .04em; }
+  td.n, th.n { width: 26px; text-align: center; }
+  td.b { font-weight: bold; }
+  .pie { margin-top: 8px; font-size: 8pt; color: #444; }
+</style></head><body>${sezioni}
+<script>window.onload=()=>{window.print()}<\/script></body></html>`
+
+    const w = window.open('', '_blank')
+    if (!w) return toast('Il browser ha bloccato la finestra di stampa: consenti i popup', 'error', 7000)
+    w.document.write(html)
+    w.document.close()
+  }
+
+  // Anagrafica in CSV, per archiviarla o rileggerla in Excel
+  const esportaAnagrafica = () => {
+    const intest = 'Classe,Cognome,Nome,Data di nascita,Indirizzo,Telefono 1,Telefono 2,Note'
+    const cella = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
+    const righe = (gruppi.length ? gruppi : [{ nome: '', membri: filtrati }])
+      .flatMap(g => g.membri.map(b => [
+        g.nome, b.cognome, b.nome, fmtGG(b.data_nascita),
+        b.indirizzo, b.telefono1, b.telefono2, b.note,
+      ].map(cella).join(',')))
+    const csv = [intest, ...righe].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `anagrafica_bambini_${annoCatechistico()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast('Anagrafica esportata', 'success')
+  }
+
   const filtrati = bambini.filter(b => {
     const okN = `${b.nome} ${b.cognome}`.toLowerCase().includes(cerca.toLowerCase())
     const okC = !filtroClasse || b.classe_id === filtroClasse
@@ -189,9 +285,21 @@ export default function Bambini() {
         <h1>Bambini</h1>
         <div style={{ display:'flex', gap:8 }}>
           {isAdmin && (
-            <button className="btn btn-outline btn-sm" onClick={exportExcel} disabled={exporting} style={{ gap:6 }}>
+            <button className="btn btn-outline btn-sm" onClick={stampaElenco} style={{ gap:6 }} title="Elenco impaginato da stampare o salvare in PDF">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 17H4a2 2 0 0 1-2-2v-4h20v4a2 2 0 0 1-2 2h-2"/></svg>
+              Elenco
+            </button>
+          )}
+          {isAdmin && (
+            <button className="btn btn-outline btn-sm" onClick={esportaAnagrafica} style={{ gap:6 }} title="Nomi, date, indirizzi e telefoni in formato Excel">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
-              {exporting ? '...' : 'CSV'}
+              Anagrafica
+            </button>
+          )}
+          {isAdmin && (
+            <button className="btn btn-outline btn-sm" onClick={exportExcel} disabled={exporting} style={{ gap:6 }} title="Registro delle presenze per data">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
+              {exporting ? '...' : 'Presenze'}
             </button>
           )}
           {isAdmin && (
