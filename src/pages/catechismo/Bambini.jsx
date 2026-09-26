@@ -79,7 +79,15 @@ export default function Bambini() {
   const elimina = async (id) => {
     if (!window.confirm('Eliminare questo bambino?')) return
     const b = bambini.find(x => x.id === id)
-    await supabase.from('bambini').update({ attivo: false }).eq('id', id)
+    // .select() ci dice quante righe sono state davvero toccate: se i permessi
+    // bloccano l'operazione non arriva nessun errore, semplicemente non cambia
+    // nulla. Senza questo controllo l'app direbbe "Eliminato" a vuoto.
+    const { data, error } = await supabase.from('bambini')
+      .update({ attivo: false }).eq('id', id).select('id')
+    if (error) return toast('Non eliminato: ' + error.message, 'error', 6000)
+    if (!data || data.length === 0) {
+      return toast('Non eliminato: non hai il permesso di modificare i bambini', 'error', 7000)
+    }
     logAzione('ELIMINA_BAMBINO', b ? `${b.cognome} ${b.nome}` : id)
     toast('Eliminato', 'success'); carica()
   }
