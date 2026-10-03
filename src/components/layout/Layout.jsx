@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
+import { supabase } from '../../lib/supabase'
 import Icon from '../Icon'
 
 const SEZIONI = [
@@ -54,7 +55,7 @@ const SEZIONI = [
     voci: [
       { path: '/admin/utenti',    label: 'Utenti',    icon: 'utenti' },
       { path: '/admin/permessi',  label: 'Permessi',  icon: 'amministrazione' },
-      { path: '/admin/attivita',  label: 'Attività',  icon: 'attivita' },
+      { path: '/admin/attivita',  label: 'Controllo', icon: 'attivita' },
     ]
   },
 ]
@@ -82,6 +83,24 @@ export default function Layout() {
   useEffect(() => {
     if (sezioneCorrente) setActiveSection(sezioneCorrente.key)
   }, [location.pathname])
+
+  // Segnale di presenza: dice all'amministratore chi è collegato e su quale pagina.
+  // Parte a ogni cambio pagina e poi ogni minuto, solo con l'app in primo piano.
+  useEffect(() => {
+    if (!profilo?.id) return
+    const voce = SEZIONI.flatMap(s => s.voci.map(v => ({ ...v, sezione: s.label })))
+      .find(v => location.pathname.startsWith(v.path))
+    const pagina = voce ? `${voce.sezione} › ${voce.label}` : location.pathname === '/' ? 'Home' : location.pathname
+    const dispositivo = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Telefono' : 'Computer'
+    const invia = () => {
+      if (document.visibilityState !== 'visible') return
+      supabase.rpc('segnala_presenza', { p_pagina: pagina, p_dispositivo: dispositivo }).then(() => {}, () => {})
+    }
+    invia()
+    const timer = setInterval(invia, 60000)
+    document.addEventListener('visibilitychange', invia)
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', invia) }
+  }, [profilo?.id, location.pathname])
 
   // Chiudi drawer con Escape
   useEffect(() => {

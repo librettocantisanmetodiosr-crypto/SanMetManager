@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
-import { logAzione } from '../../lib/logger'
 import Icon from '../../components/Icon'
 
 const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'' }
@@ -72,7 +71,6 @@ export default function Bambini() {
       error.message?.includes('does not exist') ? 'Tabella bambini non trovata — esegui la migrazione SQL' :
       'Errore: ' + error.message, 'error', 8000
     )
-    logAzione(modal === 'nuovo' ? 'NUOVO_BAMBINO' : 'MODIFICA_BAMBINO', `${form.cognome} ${form.nome}`)
     toast(modal === 'nuovo' ? 'Bambino aggiunto ✓' : 'Aggiornato ✓', 'success')
     setModal(null)
     carica()
@@ -80,7 +78,6 @@ export default function Bambini() {
 
   const elimina = async (id) => {
     if (!window.confirm('Eliminare questo bambino?')) return
-    const b = bambini.find(x => x.id === id)
     // .select() ci dice quante righe sono state davvero toccate: se i permessi
     // bloccano l'operazione non arriva nessun errore, semplicemente non cambia
     // nulla. Senza questo controllo l'app direbbe "Eliminato" a vuoto.
@@ -90,7 +87,6 @@ export default function Bambini() {
     if (!data || data.length === 0) {
       return toast('Non eliminato: non hai il permesso di modificare i bambini', 'error', 7000)
     }
-    logAzione('ELIMINA_BAMBINO', b ? `${b.cognome} ${b.nome}` : id)
     toast('Eliminato', 'success'); carica()
   }
 

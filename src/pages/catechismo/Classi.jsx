@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
-import { logAzione } from '../../lib/logger'
 import Icon from '../../components/Icon'
 
 const vuota = { nome: '', anno_cammino: '', giorno: 'Sabato', note: '' }
@@ -103,7 +102,6 @@ export default function Classi() {
       if (errCat) toast('Classe salvata ma errore nell\'assegnazione catechisti', 'error')
     }
 
-    logAzione(modal === 'nuova' ? 'NUOVA_CLASSE' : 'MODIFICA_CLASSE', form.nome)
     toast(modal === 'nuova' ? 'Classe creata ✓' : 'Classe aggiornata ✓', 'success')
     setSaving(false)
     setModal(null)

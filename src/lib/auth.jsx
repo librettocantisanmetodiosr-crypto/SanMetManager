@@ -85,6 +85,8 @@ export function AuthProvider({ children }) {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) supabase.from('log_attivita').insert({ utente_id: user.id, azione: 'LOGOUT' })
     }).catch(() => {})
+    // l'amministratore lo vede subito come non collegato
+    try { await supabase.rpc('segnala_presenza', { p_pagina: 'USCITO' }) } catch (_) { /* silent */ }
     await supabase.auth.signOut()
     setProfilo(null)
   }
