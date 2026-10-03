@@ -45,6 +45,9 @@ const P = {
   giu: <><path d="M6 9.5l6 6 6-6" /></>,
   su: <><path d="M6 14.5l6-6 6 6" /></>,
   esci: <><path d="M9.5 20.5H5.5a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h4" /><path d="M16 16.5l4.5-4.5L16 7.5" /><path d="M20.5 12H9.5" /></>,
+  modifica: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
+  elimina: <><path d="M4.5 7h15" /><path d="M9.5 7V4.5h5V7" /><path d="M6.5 7l1 13h9l1-13" /><path d="M10.5 11v5.5M13.5 11v5.5" /></>,
+  piu: <><path d="M12 5v14M5 12h14" /></>,
 }
 
 export default function Icon({ name, size = 20, strokeWidth = 1.7, style }) {

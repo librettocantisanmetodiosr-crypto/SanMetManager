@@ -10,7 +10,7 @@ const SEZIONI = [
     voci: [
       { path: '/catechismo/presenze',  label: 'Presenze',  icon: 'presenze' },
       { path: '/catechismo/bambini',   label: 'Bambini',   icon: 'bambini' },
-      { path: '/catechismo/iscrizioni', label: 'Iscrizioni', icon: 'comunita', ruoli: ['admin','parroco','segreteria'] },
+      { path: '/catechismo/iscrizioni', label: 'Iscrizioni', icon: 'comunita', ruoli: ['admin','parroco','segreteria','responsabile'] },
       { path: '/catechismo/attivita',  label: 'Diario',    icon: 'diario' },
       { path: '/catechismo/classi',    label: 'Classi',    icon: 'classi' },
       { path: '/catechismo/report',    label: 'Report',    icon: 'report' },
@@ -50,11 +50,11 @@ const SEZIONI = [
   },
   {
     key: 'admin', label: 'Amministrazione', icon: 'amministrazione', color: 'var(--gray-700)',
-    ruoli: ['admin','parroco','segreteria','responsabile'],
+    soloAdmin: true,   // utenti e permessi: solo l'amministratore
     voci: [
       { path: '/admin/utenti',    label: 'Utenti',    icon: 'utenti' },
-      { path: '/admin/permessi',  label: 'Permessi',  icon: 'amministrazione', ruoli: ['admin','parroco'] },
-      { path: '/admin/attivita',  label: 'Attività',  icon: 'attivita', ruoli: ['admin'] },
+      { path: '/admin/permessi',  label: 'Permessi',  icon: 'amministrazione' },
+      { path: '/admin/attivita',  label: 'Attività',  icon: 'attivita' },
     ]
   },
 ]
@@ -71,7 +71,7 @@ export default function Layout() {
     return ruoli.some(r => tuttiRuoli.includes(r))
   }
 
-  const sezioniVisibili = SEZIONI.filter(s => canSee(s.ruoli))
+  const sezioniVisibili = SEZIONI.filter(s => s.soloAdmin ? tuttiRuoli.includes('admin') : canSee(s.ruoli))
 
   const sezioneCorrente = SEZIONI.find(s =>
     s.voci.some(v => location.pathname.startsWith(v.path))

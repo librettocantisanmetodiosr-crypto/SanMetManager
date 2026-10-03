@@ -10,7 +10,7 @@ const fmtData = (d) => new Date(d + 'T00:00:00')
 export default function Supplenze() {
   const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isAdmin = ['admin', 'parroco', 'segreteria'].some(r => tuttiRuoli.includes(r))
+  const isAdmin = ['admin', 'parroco', 'segreteria', 'responsabile'].some(r => tuttiRuoli.includes(r))
 
   const [supplenze, setSupplenze] = useState([])
   const [classi, setClassi] = useState([])

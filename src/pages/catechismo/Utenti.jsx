@@ -8,10 +8,10 @@ import { emailConfigured } from '../../lib/emailConfig'
 import { logAzione } from '../../lib/logger'
 
 const RUOLI = [
-  { value: 'responsabile',         label: 'Responsabile',    badge: 'badge-red',   desc: 'Accesso completo + può avere ruoli multipli' },
+  { value: 'responsabile',         label: 'Responsabile',    badge: 'badge-red',   desc: 'Vede e gestisce tutto, tranne utenti e permessi' },
   { value: 'admin',                label: 'Admin',           badge: 'badge-red',   desc: 'Accesso completo a tutto' },
   { value: 'parroco',              label: 'Parroco',         badge: 'badge-red',   desc: 'Accesso completo a tutto' },
-  { value: 'segreteria',           label: 'Segreteria',      badge: 'badge-blue',  desc: 'Gestione catechismo e utenti' },
+  { value: 'segreteria',           label: 'Segreteria',      badge: 'badge-blue',  desc: 'Gestione catechismo, iscrizioni e bacheca' },
   { value: 'catechista',           label: 'Catechista',      badge: 'badge-green', desc: 'Presenze e bambini della propria classe' },
   { value: 'responsabile_comitato',label: 'Resp. Comitato',  badge: 'badge-blue',  desc: 'Calendario, lettere e rubrica comitato' },
   { value: 'comitato',             label: 'Comitato',        badge: 'badge-gray',  desc: 'Solo bacheca e calendario (sola lettura)' },
@@ -50,9 +50,9 @@ export default function Utenti() {
   const [modalCondivisione, setModalCondivisione] = useState(null)
   const [pwdCondivisione, setPwdCondivisione] = useState('')
 
-  const isAdmin = ['admin', 'parroco', 'responsabile'].includes(profilo?.ruolo)
+  // La pagina è riservata all'amministratore
+  const isAdmin = profilo?.ruolo === 'admin'
 
-  // Segreteria può creare utenti ma non admin/parroco
   const ruoliAssegnabili = isAdmin
     ? RUOLI
     : RUOLI.filter(r => !RUOLI_RISERVATI.includes(r.value))

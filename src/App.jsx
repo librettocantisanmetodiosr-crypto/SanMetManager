@@ -43,10 +43,13 @@ import NeoComunit from './pages/neocatecumenali/Comunita'
 import NeoStanze from './pages/neocatecumenali/Stanze'
 import NeoAvvisi from './pages/neocatecumenali/Avvisi'
 
-function ProtectedRoute({ children, ruoli }) {
+// `soloAdmin`: pagine riservate all'amministratore (gestione utenti e permessi).
+// Qui non vale la scorciatoia dei "super utenti": parroco e responsabile restano fuori.
+function ProtectedRoute({ children, ruoli, soloAdmin }) {
   const { user, tuttiRuoli, loading } = useAuth()
   if (loading) return <div className="loader"><div className="spinner" />Caricamento…</div>
   if (!user) return <Navigate to="/login" replace />
+  if (soloAdmin) return tuttiRuoli.includes('admin') ? children : <Navigate to="/" replace />
   const isSuperUser = ['admin', 'parroco', 'responsabile'].some(r => tuttiRuoli.includes(r))
   if (ruoli && !isSuperUser && !ruoli.some(r => tuttiRuoli.includes(r))) return <Navigate to="/" replace />
   return children
@@ -75,9 +78,9 @@ function AppRoutes() {
         <Route path="bacheca"              element={<ProtectedRoute><Bacheca /></ProtectedRoute>} />
         {/* Admin — Utenti (vecchio path reindirizzato) */}
         <Route path="catechismo/utenti"    element={<Navigate to="/admin/utenti" replace />} />
-        <Route path="admin/permessi" element={<ProtectedRoute ruoli={['admin','parroco']}><AdminPermessi /></ProtectedRoute>} />
-        <Route path="admin/utenti"         element={<ProtectedRoute ruoli={['admin','parroco','segreteria']}><CatUtenti /></ProtectedRoute>} />
-        <Route path="admin/attivita"       element={<ProtectedRoute ruoli={['admin']}><AdminAttivita /></ProtectedRoute>} />
+        <Route path="admin/permessi" element={<ProtectedRoute soloAdmin><AdminPermessi /></ProtectedRoute>} />
+        <Route path="admin/utenti"         element={<ProtectedRoute soloAdmin><CatUtenti /></ProtectedRoute>} />
+        <Route path="admin/attivita"       element={<ProtectedRoute soloAdmin><AdminAttivita /></ProtectedRoute>} />
         <Route path="catechismo/attivita"  element={<ProtectedRoute ruoli={['admin','parroco','segreteria','catechista','responsabile']}><CatAttivita /></ProtectedRoute>} />
         {/* Comitato — comitato: solo calendario (read-only); responsabile_comitato: anche lettere e rubrica */}
         <Route path="comitato/calendario" element={<ProtectedRoute ruoli={['admin','parroco','comitato','responsabile_comitato']}><ComCalendario /></ProtectedRoute>} />

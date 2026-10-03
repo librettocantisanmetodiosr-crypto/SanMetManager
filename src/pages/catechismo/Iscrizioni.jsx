@@ -18,7 +18,7 @@ const annoCorrente = () => {
 export default function Iscrizioni() {
   const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const puoGestire = ['admin', 'parroco', 'segreteria'].some(r => tuttiRuoli.includes(r))
+  const puoGestire = ['admin', 'parroco', 'segreteria', 'responsabile'].some(r => tuttiRuoli.includes(r))
 
   const [iscritti, setIscritti] = useState([])
   const [classi, setClassi] = useState([])

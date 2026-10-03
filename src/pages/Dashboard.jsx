@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { etichettaDestinatari } from '../lib/bacheca'
 import { supabase } from '../lib/supabase'
 import Icon from '../components/Icon'
 
@@ -26,7 +27,8 @@ export default function Dashboard() {
   const [eventi, setEventi] = useState([])
   const [mieiTurni, setMieiTurni] = useState([])
 
-  const isAdmin = ['admin','parroco','segreteria'].some(r => tuttiRuoli.includes(r))
+  const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
+  const gestisceUtenti = tuttiRuoli.includes('admin')   // utenti e permessi: solo l'amministratore
   const hasCatechismo = ['admin','parroco','segreteria','catechista','responsabile'].some(r => tuttiRuoli.includes(r))
   const hasComitato = ['admin','parroco','comitato','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
   const hasComitaEdit = ['admin','parroco','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
@@ -119,7 +121,7 @@ export default function Dashboard() {
     hasComitaEdit  && { icon: 'lettere', label: 'Lettere', path: '/comitato/lettere', color: 'var(--blue)' },
     hasCoro        && { icon: 'canti', label: 'Canti', path: '/coro/canti', color: 'var(--gold)' },
     hasNeo         && { icon: 'stanze', label: 'Stanze', path: '/neo/stanze', color: 'var(--red)' },
-    isAdmin        && { icon: 'utenti', label: 'Utenti', path: '/admin/utenti', color: 'var(--gray-700)' },
+    gestisceUtenti && { icon: 'utenti', label: 'Utenti', path: '/admin/utenti', color: 'var(--gray-700)' },
   ].filter(Boolean)
 
   const perc = riepilogo && riepilogo.registrate > 0
@@ -274,7 +276,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 18 }}>
               <StatCard num={stats.bambini} label="Bambini" color="var(--primary)" bg="var(--primary-bg)" onClick={() => navigate('/catechismo/bambini')} />
               <StatCard num={stats.classi}  label="Classi"  color="#4c6478"       bg="var(--blue-bg)"    onClick={() => navigate('/catechismo/classi')} />
-              <StatCard num={stats.utenti}  label="Utenti"  color="#8f5641"       bg="var(--red-bg)"     onClick={() => navigate('/admin/utenti')} />
+              <StatCard num={stats.utenti}  label="Utenti"  color="#8f5641"       bg="var(--red-bg)"     onClick={gestisceUtenti ? () => navigate('/admin/utenti') : undefined} />
             </div>
           )}
 
@@ -353,7 +355,7 @@ export default function Dashboard() {
                 <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: 3 }}>{a.titolo}</div>
                 <div className="text-sm text-muted">{a.testo}</div>
                 <div className="text-xs text-muted" style={{ marginTop: 6 }}>
-                  {new Date(a.created_at).toLocaleDateString('it-IT')} &middot; <span className="badge badge-green">{a.destinatari}</span>
+                  {new Date(a.created_at).toLocaleDateString('it-IT')} &middot; <span className="badge badge-green">{etichettaDestinatari(a.destinatari)}</span>
                 </div>
               </div>
             </div>
@@ -369,7 +371,7 @@ function StatCard({ num, label, color, bg, onClick }) {
   return (
     <div
       onClick={onClick}
-      style={{ background: bg, borderRadius: 12, padding: '14px 8px', textAlign: 'center', cursor: 'pointer' }}
+      style={{ background: bg, borderRadius: 12, padding: '14px 8px', textAlign: 'center', cursor: onClick ? 'pointer' : 'default' }}
     >
       <div style={{ fontSize: '1.7rem', fontWeight: 800, color, lineHeight: 1 }}>{num}</div>
       <div style={{ fontSize: '0.66rem', color, fontWeight: 700, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>

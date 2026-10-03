@@ -30,6 +30,7 @@ export default function Turni() {
   const [piano, setPiano] = useState(null)
   const [turni, setTurni] = useState([])
   const [storico, setStorico] = useState({})   // profilo_id -> quante volte ha fatto
+  const [passati, setPassati] = useState([])   // turni gia' assegnati: { profilo_id, ruolo, data }
   const [loading, setLoading] = useState(true)
   const [generando, setGenerando] = useState(false)
   const [pannello, setPannello] = useState(false)
@@ -52,7 +53,7 @@ export default function Turni() {
         .eq('attivo', true).order('cognome'),
       supabase.from('classi_catechisti').select('catechista_id, classe_id'),
       supabase.from('piani_turni').select('*').eq('anno', anno).eq('mese', mese).maybeSingle(),
-      supabase.from('turni').select('profilo_id'),
+      supabase.from('turni').select('profilo_id, ruolo, date_catechismo(data)'),
     ])
 
     setIo(me.data || null)
@@ -72,6 +73,9 @@ export default function Turni() {
       if (t.profilo_id) conteggi[t.profilo_id] = (conteggi[t.profilo_id] || 0) + 1
     })
     setStorico(conteggi)
+    setPassati((st.data || [])
+      .filter(t => t.profilo_id)
+      .map(t => ({ profilo_id: t.profilo_id, ruolo: t.ruolo, data: t.date_catechismo?.data || null })))
 
     setPiano(pi.data || null)
     if (pi.data) {
@@ -96,6 +100,12 @@ export default function Turni() {
   }
 
   // ── Generazione del piano ────────────────────────────────────
+  // Regole, dalla piu' importante:
+  //  1. nessuno ha due incarichi nello stesso sabato
+  //  2. chi ha servito il sabato precedente riposa (se le persone bastano)
+  //  3. tocca prima a chi ha fatto meno turni in tutto, cosi' si gira
+  //  4. i due dell'offertorio non sono della stessa classe
+  //  5. a ognuno un incarico diverso dall'ultima volta, e quello fatto meno
   const genera = async () => {
     if (date.length === 0) return toast('Nessuna data di catechismo in questo mese', 'error')
     if (partecipanti.length < 5) {
@@ -103,40 +113,76 @@ export default function Turni() {
     }
     setGenerando(true)
 
-    // conteggi di partenza: lo storico reale, cosi' la rotazione continua
-    const conta = {}
-    partecipanti.forEach(p => { conta[p.id] = storico[p.id] || 0 })
+    const POSTI = RUOLI.flatMap(r =>
+      Array.from({ length: r.posti }, (_, i) => ({ ruolo: r.key, posizione: i + 1 })))
+    const giorniTra = (a, b) => Math.round((new Date(a) - new Date(b)) / 86400000)
+    const permutazioni = (arr) => arr.length <= 1 ? [arr]
+      : arr.flatMap((x, i) => permutazioni([...arr.slice(0, i), ...arr.slice(i + 1)]).map(r => [x, ...r]))
 
-    // candidati ordinati per "chi ha fatto meno", a parita' in ordine casuale
-    const scegli = (esclusi, filtro) => {
-      const cand = partecipanti
-        .filter(p => !esclusi.has(p.id))
-        .filter(p => !filtro || filtro(p))
-        .sort((a, b) => (conta[a.id] - conta[b.id]) || (Math.random() - 0.5))
-      return cand[0] || null
-    }
+    // punto di partenza: lo storico reale, cosi' la rotazione continua da un mese all'altro
+    const stato = {}
+    partecipanti.forEach(p => { stato[p.id] = { tot: 0, perRuolo: {}, ultimaData: null, ultimoRuolo: null } })
+    const primaData = date[0].data
+    passati.forEach(t => {
+      const st = stato[t.profilo_id]
+      if (!st) return
+      st.tot++
+      st.perRuolo[t.ruolo] = (st.perRuolo[t.ruolo] || 0) + 1
+      if (t.data && t.data < primaData && (!st.ultimaData || t.data > st.ultimaData)) {
+        st.ultimaData = t.data
+        st.ultimoRuolo = t.ruolo
+      }
+    })
 
     const nuovi = []
-    let avvisi = 0
+    let avvisi = 0        // offertorio con due della stessa classe
+    let consecutivi = 0   // persone in turno due sabati di fila
 
     for (const d of date) {
-      const usati = new Set()
-      for (const r of RUOLI) {
-        for (let pos = 1; pos <= r.posti; pos++) {
-          let scelto
-          if (r.key === 'offertorio' && pos === 2) {
-            const primo = nuovi.find(t => t.data_id === d.id && t.ruolo === 'offertorio' && t.posizione === 1)
-            scelto = scegli(usati, p => primo ? !stessaClasse(primo.profilo_id, p.id) : true)
-            if (!scelto) { scelto = scegli(usati); avvisi++ }   // nessuno di classe diversa: ripiego
-          } else {
-            scelto = scegli(usati)
-          }
-          if (!scelto) continue
-          usati.add(scelto.id)
-          conta[scelto.id] = (conta[scelto.id] || 0) + 1
-          nuovi.push({ data_id: d.id, ruolo: r.key, posizione: pos, profilo_id: scelto.id })
-        }
+      // ha servito il sabato prima?
+      const diFila = (id) => !!stato[id].ultimaData && giorniTra(d.data, stato[id].ultimaData) <= 8
+
+      // ordine di chiamata: prima chi ha riposato, poi chi ha fatto meno, a parita' a sorte
+      const ordine = partecipanti
+        .map(p => ({ p, sorte: Math.random() }))
+        .sort((a, b) =>
+          (diFila(a.p.id) - diFila(b.p.id)) ||
+          (stato[a.p.id].tot - stato[b.p.id].tot) ||
+          (a.sorte - b.sorte))
+        .map(x => x.p)
+
+      // la squadra del giorno: i primi dell'ordine
+      const squadra = ordine.slice(0, POSTI.length)
+      const haCoppia = (sq) => sq.some((a, i) => sq.slice(i + 1).some(b => !stessaClasse(a.id, b.id)))
+      if (!haCoppia(squadra)) {
+        // tutti della stessa classe: cambio l'ultimo con il primo disponibile di un'altra classe
+        const sostituto = ordine.slice(POSTI.length).find(c => !stessaClasse(c.id, squadra[0].id))
+        if (sostituto) squadra[squadra.length - 1] = sostituto
       }
+      consecutivi += squadra.filter(p => diFila(p.id)).length
+
+      // chi fa cosa: provo tutte le combinazioni e tengo quella con meno ripetizioni
+      const costo = (p, posto) =>
+        (stato[p.id].ultimoRuolo === posto.ruolo ? 10 : 0) + (stato[p.id].perRuolo[posto.ruolo] || 0) * 3
+      let migliore = null
+      for (const perm of permutazioni(squadra)) {
+        let c = Math.random() * 0.5   // a parita' di costo, a sorte
+        perm.forEach((p, i) => { c += costo(p, POSTI[i]) })
+        const off = perm.filter((p, i) => POSTI[i].ruolo === 'offertorio')
+        if (off.length === 2 && stessaClasse(off[0].id, off[1].id)) c += 1000
+        if (!migliore || c < migliore.c) migliore = { c, perm }
+      }
+      if (migliore.c >= 1000) avvisi++
+
+      migliore.perm.forEach((p, i) => {
+        const posto = POSTI[i]
+        const st = stato[p.id]
+        st.tot++
+        st.perRuolo[posto.ruolo] = (st.perRuolo[posto.ruolo] || 0) + 1
+        st.ultimaData = d.data
+        st.ultimoRuolo = posto.ruolo
+        nuovi.push({ data_id: d.id, ruolo: posto.ruolo, posizione: posto.posizione, profilo_id: p.id })
+      })
     }
 
     // salva piano + turni
@@ -152,6 +198,8 @@ export default function Turni() {
 
     if (avvisi > 0) {
       toast(`Piano creato, ma in ${avvisi} cas${avvisi === 1 ? 'o' : 'i'} non c'erano due persone di classi diverse`, 'error', 8000)
+    } else if (consecutivi > 0) {
+      toast(`Proposta creata. Con ${partecipanti.length} partecipanti qualcuno è di turno due sabati di fila: per evitarlo ne servono almeno ${POSTI.length * 2}`, 'default', 9000)
     } else {
       toast('Proposta creata', 'success')
     }
