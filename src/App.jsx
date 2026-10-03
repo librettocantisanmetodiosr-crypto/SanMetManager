@@ -45,11 +45,12 @@ import NeoAvvisi from './pages/neocatecumenali/Avvisi'
 
 // `soloAdmin`: pagine riservate all'amministratore (gestione utenti e permessi).
 // Qui non vale la scorciatoia dei "super utenti": parroco e responsabile restano fuori.
+// Conta solo il ruolo principale: "admin" fra i ruoli aggiuntivi non basta.
 function ProtectedRoute({ children, ruoli, soloAdmin }) {
-  const { user, tuttiRuoli, loading } = useAuth()
+  const { user, profilo, tuttiRuoli, loading } = useAuth()
   if (loading) return <div className="loader"><div className="spinner" />Caricamento…</div>
   if (!user) return <Navigate to="/login" replace />
-  if (soloAdmin) return tuttiRuoli.includes('admin') ? children : <Navigate to="/" replace />
+  if (soloAdmin) return profilo?.ruolo === 'admin' ? children : <Navigate to="/" replace />
   const isSuperUser = ['admin', 'parroco', 'responsabile'].some(r => tuttiRuoli.includes(r))
   if (ruoli && !isSuperUser && !ruoli.some(r => tuttiRuoli.includes(r))) return <Navigate to="/" replace />
   return children

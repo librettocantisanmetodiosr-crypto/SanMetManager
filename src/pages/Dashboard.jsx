@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [mieiTurni, setMieiTurni] = useState([])
 
   const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
-  const gestisceUtenti = tuttiRuoli.includes('admin')   // utenti e permessi: solo l'amministratore
+  const gestisceUtenti = profilo?.ruolo === 'admin'   // utenti e permessi: solo l'amministratore
   const hasCatechismo = ['admin','parroco','segreteria','catechista','responsabile'].some(r => tuttiRuoli.includes(r))
   const hasComitato = ['admin','parroco','comitato','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
   const hasComitaEdit = ['admin','parroco','responsabile_comitato'].some(r => tuttiRuoli.includes(r))

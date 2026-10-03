@@ -71,7 +71,7 @@ export default function Layout() {
     return ruoli.some(r => tuttiRuoli.includes(r))
   }
 
-  const sezioniVisibili = SEZIONI.filter(s => s.soloAdmin ? tuttiRuoli.includes('admin') : canSee(s.ruoli))
+  const sezioniVisibili = SEZIONI.filter(s => s.soloAdmin ? profilo?.ruolo === 'admin' : canSee(s.ruoli))
 
   const sezioneCorrente = SEZIONI.find(s =>
     s.voci.some(v => location.pathname.startsWith(v.path))

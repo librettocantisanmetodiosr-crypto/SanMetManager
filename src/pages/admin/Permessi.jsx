@@ -24,7 +24,7 @@ const SEZIONI = [
 export default function Permessi() {
   const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const puoGestire = tuttiRuoli.includes('admin')
+  const puoGestire = profilo?.ruolo === 'admin'
 
   const [utenti, setUtenti] = useState([])
   const [loading, setLoading] = useState(true)

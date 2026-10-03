@@ -11,6 +11,8 @@
 -- modificare, disattivare utenti): quella resta com'e', perche' la
 -- gestione degli utenti spetta solo all'amministratore.
 --
+-- APPLICATO il 3 ottobre 2026 (bacheca, bambini, classi, eventi_calendario,
+-- iscrizioni, note_giornata, rubrica, stanze, supplenze).
 -- Solo aggiunte: nessun dato viene toccato. Se qualcosa non torna il
 -- blocco si annulla da solo per intero, senza lasciare regole a meta'.
 -- ═══════════════════════════════════════════════════
@@ -28,7 +30,7 @@ begin
     where schemaname = 'public'
       and (coalesce(qual,'') || coalesce(with_check,'')) like '%''segreteria''%'
       and (coalesce(qual,'') || coalesce(with_check,'')) not like '%''responsabile''%'
-      and (tablename <> 'profili' or cmd = 'SELECT')
+      and tablename <> 'profili'
   loop
     q := replace(r.qual,       '''segreteria''::text', '''segreteria''::text, ''responsabile''::text');
     w := replace(r.with_check, '''segreteria''::text', '''segreteria''::text, ''responsabile''::text');
