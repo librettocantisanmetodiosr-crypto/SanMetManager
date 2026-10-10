@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useToast } from '../../hooks/useToast'
 import Icon from '../../components/Icon'
+import ImportaBambini from '../../components/ImportaBambini'
 
 const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'' }
 
@@ -21,6 +22,7 @@ export default function Bambini() {
   const [filtroClasse, setFiltroClasse] = useState('')
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [importa, setImporta] = useState(false)
 
   useEffect(() => { carica() }, [profilo])
 
@@ -277,6 +279,10 @@ export default function Bambini() {
   return (
     <div style={{ padding:16, maxWidth:1100, margin:'0 auto' }}>
       <ToastContainer/>
+      {importa && (
+        <ImportaBambini classi={classi} esistenti={bambini} classeIniziale={filtroClasse} toast={toast}
+          onChiudi={() => setImporta(false)} onFatto={() => { setImporta(false); carica() }} />
+      )}
       <div className="flex items-center justify-between mb-4" style={{ gap:10, flexWrap:'wrap' }}>
         <h1>Bambini</h1>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -296,6 +302,12 @@ export default function Bambini() {
             <button className="btn btn-outline btn-sm" onClick={exportExcel} disabled={exporting} style={{ gap:6 }} title="Registro delle presenze per data">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
               {exporting ? '...' : 'Presenze'}
+            </button>
+          )}
+          {isAdmin && (
+            <button className="btn btn-outline btn-sm" onClick={() => setImporta(true)} style={{ gap:6 }} title="Importa un elenco da foto, PDF, Excel o CSV">
+              <Icon name="importa" size={15} strokeWidth={1.8} />
+              Importa
             </button>
           )}
           {isAdmin && (
