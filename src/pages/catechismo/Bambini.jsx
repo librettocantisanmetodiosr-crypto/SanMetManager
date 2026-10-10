@@ -5,7 +5,7 @@ import { useToast } from '../../hooks/useToast'
 import Icon from '../../components/Icon'
 import ImportaBambini from '../../components/ImportaBambini'
 
-const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'' }
+const vuoto = { nome:'', cognome:'', data_nascita:'', indirizzo:'', telefono1:'', telefono2:'', note:'', classe_id:'', verificato:true }
 
 export default function Bambini() {
   const { profilo, tuttiRuoli } = useAuth()
@@ -23,6 +23,7 @@ export default function Bambini() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [importa, setImporta] = useState(false)
+  const [soloVerifica, setSoloVerifica] = useState(false)
 
   useEffect(() => { carica() }, [profilo])
 
@@ -34,7 +35,7 @@ export default function Bambini() {
     setClassi(cl || [])
 
     let q = supabase.from('bambini')
-      .select('id, nome, cognome, data_nascita, indirizzo, telefono1, telefono2, note, classe_id, classi(nome)')
+      .select('id, nome, cognome, data_nascita, indirizzo, telefono1, telefono2, note, classe_id, da_verificare, nota_verifica, classi(nome)')
       .eq('attivo', true).order('cognome')
 
     if (!isAdmin && tuttiRuoli.includes('catechista')) {
@@ -64,6 +65,9 @@ export default function Bambini() {
     const dati = { nome: form.nome, cognome: form.cognome, data_nascita: form.data_nascita || null,
       indirizzo: form.indirizzo, telefono1: form.telefono1, telefono2: form.telefono2,
       note: form.note, classe_id: form.classe_id || null }
+    if (modal !== 'nuovo' && modal.da_verificare && form.verificato) {
+      dati.da_verificare = false; dati.nota_verifica = null
+    }
     const { error } = modal === 'nuovo'
       ? await supabase.from('bambini').insert(dati)
       : await supabase.from('bambini').update(dati).eq('id', modal.id)
@@ -90,6 +94,17 @@ export default function Bambini() {
       return toast('Non eliminato: non hai il permesso di modificare i bambini', 'error', 7000)
     }
     toast('Eliminato', 'success'); carica()
+  }
+
+  // I dati inseriti da un foglio scritto a mano restano "da verificare"
+  // finché qualcuno non li confronta con l'originale e li conferma.
+  const confermaDati = async (b) => {
+    if (!window.confirm(`Confermi che i dati di ${b.cognome} ${b.nome} sono giusti?`)) return
+    const { data, error } = await supabase.from('bambini')
+      .update({ da_verificare: false, nota_verifica: null }).eq('id', b.id).select('id')
+    if (error || !data?.length) return toast('Non confermato: non hai il permesso di modificare i bambini', 'error', 6000)
+    setBambini(prev => prev.map(x => x.id === b.id ? { ...x, da_verificare: false, nota_verifica: null } : x))
+    toast('Dati confermati', 'success')
   }
 
   const exportExcel = async () => {
@@ -230,8 +245,9 @@ export default function Bambini() {
   const filtrati = bambini.filter(b => {
     const okN = `${b.nome} ${b.cognome}`.toLowerCase().includes(cerca.toLowerCase())
     const okC = !filtroClasse || b.classe_id === filtroClasse
-    return okN && okC
+    return okN && okC && (!soloVerifica || b.da_verificare)
   })
+  const daVerificare = bambini.filter(b => b.da_verificare && (!filtroClasse || b.classe_id === filtroClasse)).length
 
   // Quali dati mancano a un bambino (per capire cosa completare)
   const datiMancanti = (b) => {
@@ -260,9 +276,14 @@ export default function Bambini() {
       <button className="btn btn-outline btn-sm btn-icon" onClick={() => apriStats(b)} aria-label="Presenze">
         <Icon name="report" size={15} />
       </button>
+      {isAdmin && b.da_verificare && (
+        <button className="btn btn-primary btn-sm btn-icon" onClick={() => confermaDati(b)} aria-label="Conferma i dati" title="I dati sono giusti: conferma">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+      )}
       {isAdmin && (
         <button className="btn btn-outline btn-sm btn-icon" aria-label="Modifica" onClick={() => {
-          setForm({ nome:b.nome, cognome:b.cognome, data_nascita:b.data_nascita||'', indirizzo:b.indirizzo||'', telefono1:b.telefono1||'', telefono2:b.telefono2||'', note:b.note||'', classe_id:b.classe_id||'' })
+          setForm({ nome:b.nome, cognome:b.cognome, data_nascita:b.data_nascita||'', indirizzo:b.indirizzo||'', telefono1:b.telefono1||'', telefono2:b.telefono2||'', note:b.note||'', classe_id:b.classe_id||'', verificato:true })
           setModal(b)
         }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
@@ -339,6 +360,12 @@ export default function Bambini() {
         {incompleti > 0
           ? <span className="badge badge-red">{incompleti} con dati incompleti</span>
           : filtrati.length > 0 && <span className="badge badge-green">tutti completi</span>}
+        {(daVerificare > 0 || soloVerifica) && (
+          <button type="button" className={'badge ' + (soloVerifica ? 'badge-blue' : 'badge-gold')} onClick={() => setSoloVerifica(v => !v)}
+            style={{ border:'none', cursor:'pointer', font:'inherit', fontWeight:700 }} title="Bambini inseriti da un foglio scritto a mano, ancora da controllare">
+            {soloVerifica ? `Mostra tutti (${daVerificare} da verificare)` : `${daVerificare} da verificare: mostra solo quelli`}
+          </button>
+        )}
       </div>
 
       {loading ? <div className="loader"><div className="spinner"/></div> :
@@ -365,7 +392,15 @@ export default function Bambini() {
                       const m = datiMancanti(b)
                       return (
                         <tr key={b.id}>
-                          <td style={{ fontWeight:700 }}>{b.cognome} {b.nome}{b.note && <span title={b.note} style={{ color:'var(--red)', marginLeft:6 }}>&#9679;</span>}</td>
+                          <td style={{ fontWeight:700 }}>
+                            {b.cognome} {b.nome}{b.note && <span title={b.note} style={{ color:'var(--red)', marginLeft:6 }}>&#9679;</span>}
+                            {b.da_verificare && (
+                              <div style={{ fontWeight:500, marginTop:3, whiteSpace:'normal' }}>
+                                <span className="badge badge-gold">da verificare</span>
+                                {b.nota_verifica && <span className="text-xs text-muted" style={{ marginLeft:6 }}>{b.nota_verifica}</span>}
+                              </div>
+                            )}
+                          </td>
                           <td className={b.data_nascita ? '' : 'text-muted'}>{b.data_nascita ? fmtNasc(b.data_nascita) : '—'}</td>
                           <td>{b.telefono1 ? <a href={'tel:'+b.telefono1}>{b.telefono1}</a> : <span className="text-muted">—</span>}</td>
                           <td className={b.indirizzo ? '' : 'text-muted'} style={{ maxWidth:200, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{b.indirizzo || '—'}</td>
@@ -394,6 +429,13 @@ export default function Bambini() {
                             {b.data_nascita ? 'n. ' + fmtNasc(b.data_nascita) : ''}
                             {b.telefono1 ? (b.data_nascita ? ' · ' : '') + b.telefono1 : ''}
                           </div>
+                          {b.da_verificare && (
+                            <div style={{ marginTop:5 }}>
+                              <span className="badge badge-gold">da verificare</span>
+                              {b.nota_verifica && <div className="text-xs text-muted" style={{ marginTop:3 }}>{b.nota_verifica}</div>}
+                              {b.indirizzo && <div className="text-xs text-muted" style={{ marginTop:2 }}>{b.indirizzo}</div>}
+                            </div>
+                          )}
                           <div style={{ marginTop:6 }}>
                             {m.length === 0
                               ? <span className="ok-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Completo</span>
@@ -449,6 +491,15 @@ export default function Bambini() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-handle"/>
             <div className="modal-title">{modal === 'nuovo' ? 'Nuovo Bambino' : 'Modifica'}</div>
+            {modal !== 'nuovo' && modal.da_verificare && (
+              <div style={{ background:'var(--gold-bg)', color:'#5f5975', borderRadius:10, padding:'10px 12px', marginBottom:14, fontSize:'0.82rem', lineHeight:1.5 }}>
+                <b>Dati da verificare.</b> {modal.nota_verifica || 'Inseriti da un foglio scritto a mano: confrontali con l\'originale.'}
+                <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:8, fontWeight:700, cursor:'pointer' }}>
+                  <input type="checkbox" checked={!!form.verificato} onChange={e => setForm(f => ({ ...f, verificato: e.target.checked }))} style={{ width:18, height:18 }} />
+                  Ho controllato: salvando, i dati risultano verificati
+                </label>
+              </div>
+            )}
             <div className="form-row">
               <div className="form-group"><label className="form-label">Nome *</label><input className="form-control" value={form.nome} onChange={e => setForm(f=>({...f,nome:e.target.value}))} /></div>
               <div className="form-group"><label className="form-label">Cognome *</label><input className="form-control" value={form.cognome} onChange={e => setForm(f=>({...f,cognome:e.target.value}))} /></div>
