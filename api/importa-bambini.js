@@ -3,7 +3,8 @@
 // indirizzo, telefono) e segnala le righe cancellate a penna o poco leggibili.
 // Qui non si salva nulla: l'elenco torna all'app, che lo mostra per il controllo.
 //
-// Serve la variabile ANTHROPIC_API_KEY nelle impostazioni di Vercel.
+// Serve la variabile ANTHROPIC_API_KEY nelle impostazioni di Vercel. Se manca,
+// l'app usa da sola il lettore gratuito che gira nel browser (src/lib/ocrElenco.js).
 
 const Anthropic = require('@anthropic-ai/sdk')
 
@@ -71,6 +72,10 @@ async function utenteAutorizzato(token) {
 }
 
 module.exports = async (req, res) => {
+  // l'app chiede prima se la lettura con Claude e' attiva, per non spedire il file a vuoto
+  if (req.method === 'GET') {
+    res.status(200).json({ claude: !!(process.env.ANTHROPIC_API_KEY || '').trim() }); return
+  }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Metodo non consentito' }); return
   }

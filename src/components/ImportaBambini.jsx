@@ -1,11 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { readSheet } from 'read-excel-file/universal'
 import { supabase } from '../lib/supabase'
+import { leggiConOcr } from '../lib/ocrElenco'
 import Icon from './Icon'
 
 // Importazione di un elenco di bambini da foto, PDF, Excel o CSV.
 // Il file viene letto e trasformato in righe che si possono correggere,
 // spuntare o scartare: nel database finisce solo quello che si conferma.
+// Foto e PDF: se su Vercel c'è la chiave di Claude li legge Claude (più preciso),
+// altrimenti il lettore gratuito dentro il browser, che funziona sempre.
 
 const LATO_MAX = 2200          // le foto del telefono vengono rimpicciolite prima dell'invio
 const MAX_PDF = 3 * 1024 * 1024
@@ -102,6 +105,8 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
   const [righe, setRighe] = useState([])
   const [nomeFile, setNomeFile] = useState('')
   const [errore, setErrore] = useState('')
+  const [stato, setStato] = useState('')
+  const [lettore, setLettore] = useState('')   // file | claude | gratuito
   const [salvando, setSalvando] = useState(false)
   const inputRef = useRef(null)
 
@@ -113,34 +118,42 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
 
   const leggi = async (file) => {
     if (!file) return
-    setErrore(''); setNomeFile(file.name); setFase('lettura')
+    setErrore(''); setStato(''); setNomeFile(file.name); setFase('lettura')
     try {
       const nome = file.name.toLowerCase()
       let trovati
       if (nome.endsWith('.xlsx')) {
-        trovati = daTabella(await readSheet(file))
+        trovati = daTabella(await readSheet(file)); setLettore('file')
       } else if (nome.endsWith('.csv') || nome.endsWith('.txt')) {
-        trovati = daTabella(leggiCSV(await file.text()))
+        trovati = daTabella(leggiCSV(await file.text())); setLettore('file')
       } else if (nome.endsWith('.xls')) {
         throw new Error('Il vecchio formato .xls non è supportato: salvalo come .xlsx e riprova')
       } else {
         const pdf = file.type === 'application/pdf' || nome.endsWith('.pdf')
-        if (pdf && file.size > MAX_PDF) throw new Error('PDF troppo grande (massimo 3 MB): importa una pagina alla volta')
         if (!pdf && !file.type.startsWith('image/')) throw new Error('Formato non riconosciuto: usa una foto, un PDF, un file Excel (.xlsx) o CSV')
-        const dati = pdf ? await base64(file) : await preparaFoto(file)
-        const { data: { session } } = await supabase.auth.getSession()
-        const r = await fetch('/api/importa-bambini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
-          body: JSON.stringify({ mediaType: pdf ? 'application/pdf' : 'image/jpeg', dati }),
-        })
-        const corpo = await r.json().catch(() => ({}))
-        if (!r.ok) throw new Error(corpo.error || `Lettura non riuscita (errore ${r.status})`)
-        trovati = (corpo.bambini || []).map(b => ({
+
+        // Claude, se è attivo e il file ci sta; in ogni altro caso (o se fallisce) il lettore gratuito
+        let daClaude = null
+        const attivo = await fetch('/api/importa-bambini').then(r => r.json()).then(j => !!j.claude).catch(() => false)
+        if (attivo && !(pdf && file.size > MAX_PDF)) {
+          try {
+            const dati = pdf ? await base64(file) : await preparaFoto(file)
+            const { data: { session } } = await supabase.auth.getSession()
+            const r = await fetch('/api/importa-bambini', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+              body: JSON.stringify({ mediaType: pdf ? 'application/pdf' : 'image/jpeg', dati }),
+            })
+            if (r.ok) daClaude = (await r.json()).bambini || []
+          } catch (_) { /* si passa al lettore gratuito */ }
+        }
+        const letti = daClaude || await leggiConOcr(file, setStato)
+        setLettore(daClaude ? 'claude' : 'gratuito')
+        trovati = letti.map(b => ({
           ...b, cognome: maiuscole(b.cognome), nome: maiuscole(b.nome), data_nascita: dataISO(b.data_nascita),
         }))
       }
-      if (!trovati.length) throw new Error('Nel file non ho trovato nessun nome')
+      if (!trovati.length) throw new Error('Nel file non ho trovato nessun nome: se è una foto, riprovala più dritta, nitida e ben illuminata')
 
       const visti = new Set()
       setRighe(trovati.map((b, i) => {
@@ -179,7 +192,7 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
   }
 
   const etichetta = (r) =>
-    r.cancellato ? ['cancellato sul foglio', 'badge-red']
+    r.cancellato ? [lettore === 'gratuito' ? 'forse cancellato a penna' : 'cancellato sul foglio', 'badge-red']
     : r.presente ? [`già presente (${r.presente})`, 'badge-gray']
     : r.ripetuto ? ['ripetuto nel file', 'badge-gray']
     : r.incerto ? ['da controllare', 'badge-gold']
@@ -216,7 +229,7 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
           <div style={{ textAlign: 'center', padding: '26px 0' }}>
             <div className="loader"><div className="spinner" /></div>
             <div className="text-sm" style={{ marginTop: 10, fontWeight: 700 }}>Sto leggendo {nomeFile}…</div>
-            <div className="text-xs text-muted" style={{ marginTop: 4 }}>Per foto e PDF può volerci fino a un minuto.</div>
+            <div className="text-xs text-muted" style={{ marginTop: 4 }}>{stato || 'Per foto e PDF può volerci fino a un minuto.'}</div>
           </div>
         )}
 
@@ -233,6 +246,13 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
             <div className="text-xs text-muted" style={{ marginBottom: 8, lineHeight: 1.6 }}>
               Trovati {righe.length} nomi in <b>{nomeFile}</b>. Controlla i dati, correggi dove serve e lascia la spunta solo a chi vuoi importare.
             </div>
+
+            {lettore === 'gratuito' && (
+              <div style={{ background: 'var(--gold-bg)', color: '#5f5975', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: '0.8rem', lineHeight: 1.5 }}>
+                Letto con il <b>lettore gratuito</b>: può sbagliare qualche lettera o numero e non legge le aggiunte a penna.
+                Ricontrolla ogni riga sul foglio, anche quelle segnate come cancellate.
+              </div>
+            )}
 
             <div style={{ maxHeight: '48vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14, paddingRight: 2 }}>
               {righe.map(r => {
