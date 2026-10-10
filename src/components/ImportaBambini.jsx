@@ -161,7 +161,8 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
         const presente = giaPresenti[k]
         const ripetuto = visti.has(k)
         visti.add(k)
-        return { ...b, id: i, presente, ripetuto, sel: !b.cancellato && !presente && !ripetuto && !!(b.cognome && b.nome) }
+        // esito: attesa (da decidere) | ok (confermato) | no (scartato)
+        return { ...b, id: i, presente, ripetuto, esito: 'attesa', modifica: false }
       }))
       setFase('controllo')
     } catch (e) {
@@ -170,17 +171,26 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
     }
   }
 
-  const cambia = (id, campo, valore) =>
-    setRighe(rr => rr.map(r => r.id === id ? { ...r, [campo]: valore } : r))
+  const cambia = (id, campi) =>
+    setRighe(rr => rr.map(r => r.id === id ? { ...r, ...campi } : r))
 
-  const scelte = righe.filter(r => r.sel)
-  const incomplete = scelte.filter(r => !pulisci(r.cognome) || !pulisci(r.nome))
+  const completa = (r) => !!pulisci(r.cognome) && !!pulisci(r.nome)
+  const conferma = (r) => {
+    if (!completa(r)) return toast('Servono almeno nome e cognome', 'error')
+    cambia(r.id, { esito: 'ok', modifica: false })
+  }
+
+  const confermati = righe.filter(r => r.esito === 'ok')
+  const inAttesa = righe.filter(r => r.esito === 'attesa')
+  const pulite = inAttesa.filter(r => !r.cancellato && !r.presente && !r.ripetuto && !r.incerto && completa(r))
+  const nomeClasse = classi.find(c => c.id === classeId)?.nome
 
   const importa = async () => {
     if (!classeId) return toast('Scegli la classe in cui inserirli', 'error')
-    if (incomplete.length) return toast('Ci sono righe spuntate senza nome o cognome', 'error')
+    if (inAttesa.length) return toast(`Restano ${inAttesa.length} righe da confermare o scartare`, 'error')
+    if (!window.confirm(`Importare ${confermati.length} ${confermati.length === 1 ? 'bambino' : 'bambini'} nella classe "${nomeClasse}"?`)) return
     setSalvando(true)
-    const { data, error } = await supabase.from('bambini').insert(scelte.map(r => ({
+    const { data, error } = await supabase.from('bambini').insert(confermati.map(r => ({
       cognome: pulisci(r.cognome), nome: pulisci(r.nome), data_nascita: r.data_nascita || null,
       indirizzo: pulisci(r.indirizzo) || null, telefono1: pulisci(r.telefono) || null,
       classe_id: classeId, attivo: true,
@@ -190,6 +200,8 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
     toast(`${data.length} bambini importati`, 'success')
     onFatto()
   }
+
+  const dataIT = (d) => d ? d.split('-').reverse().join('/') : ''
 
   const etichetta = (r) =>
     r.cancellato ? [lettore === 'gratuito' ? 'forse cancellato a penna' : 'cancellato sul foglio', 'badge-red']
@@ -208,7 +220,7 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
           <>
             <p className="text-sm text-muted" style={{ marginBottom: 14, lineHeight: 1.6 }}>
               Carica la <b>foto</b> o il <b>PDF</b> di un elenco, oppure un file <b>Excel</b> (.xlsx) o <b>CSV</b>.
-              Prima di salvare vedi i nomi trovati e puoi correggerli o scartarli.
+Non viene salvato nulla finché non confermi tu, riga per riga.
             </p>
             {errore && (
               <div style={{ background: 'var(--red-bg)', color: '#8f5641', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: '0.85rem', lineHeight: 1.5 }}>
@@ -244,36 +256,78 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
             </div>
 
             <div className="text-xs text-muted" style={{ marginBottom: 8, lineHeight: 1.6 }}>
-              Trovati {righe.length} nomi in <b>{nomeFile}</b>. Controlla i dati, correggi dove serve e lascia la spunta solo a chi vuoi importare.
+              Trovati {righe.length} nomi in <b>{nomeFile}</b>. Confronta ogni riga con il foglio e scegli:
+              <b> Conferma</b> se è giusta, <b>Modifica</b> per correggerla, <b>Scarta</b> per non importarla.
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              <span className="badge badge-green">{confermati.length} confermati</span>
+              <span className="badge badge-gold">{inAttesa.length} da decidere</span>
+              <span className="badge badge-gray">{righe.length - confermati.length - inAttesa.length} scartati</span>
+              {lettore === 'file' && pulite.length > 0 && (
+                <button type="button" className="btn btn-outline btn-sm"
+                  onClick={() => setRighe(rr => rr.map(r => pulite.some(p => p.id === r.id) ? { ...r, esito: 'ok', modifica: false } : r))}>
+                  Conferma le {pulite.length} senza segnalazioni
+                </button>
+              )}
             </div>
 
             {lettore === 'gratuito' && (
               <div style={{ background: 'var(--gold-bg)', color: '#5f5975', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: '0.8rem', lineHeight: 1.5 }}>
                 Letto con il <b>lettore gratuito</b>: può sbagliare qualche lettera o numero e non legge le aggiunte a penna.
-                Ricontrolla ogni riga sul foglio, anche quelle segnate come cancellate.
+                Confronta ogni riga con il foglio prima di confermarla, anche quelle segnate come cancellate.
               </div>
             )}
 
             <div style={{ maxHeight: '48vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14, paddingRight: 2 }}>
               {righe.map(r => {
                 const tag = etichetta(r)
+                const bordo = r.esito === 'ok' ? 'var(--primary)' : r.esito === 'no' ? 'var(--gray-200)' : 'var(--gold)'
                 return (
-                  <div key={r.id} style={{ border: '1px solid var(--gray-200)', borderRadius: 10, padding: 10, background: r.sel ? '#fff' : 'var(--gray-50)', opacity: r.sel ? 1 : 0.75 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer', flexWrap: 'wrap' }}>
-                      <input type="checkbox" checked={r.sel} onChange={e => cambia(r.id, 'sel', e.target.checked)} style={{ width: 18, height: 18 }} />
-                      <span style={{ fontWeight: 700, fontSize: '0.86rem' }}>{r.cognome} {r.nome}</span>
+                  <div key={r.id} style={{ border: '1px solid var(--gray-200)', borderLeft: `4px solid ${bordo}`, borderRadius: 10, padding: 10, background: r.esito === 'no' ? 'var(--gray-50)' : '#fff', opacity: r.esito === 'no' ? 0.7 : 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.9rem', textDecoration: r.esito === 'no' ? 'line-through' : 'none' }}>
+                        {r.cognome || '—'} {r.nome}
+                      </span>
+                      {r.esito === 'ok' && <span className="badge badge-green">confermato</span>}
+                      {r.esito === 'no' && <span className="badge badge-gray">scartato</span>}
                       {tag && <span className={`badge ${tag[1]}`}>{tag[0]}</span>}
-                    </label>
-                    {r.nota && <div className="text-xs text-muted" style={{ marginBottom: 8 }}>{r.nota}</div>}
-                    {r.sel && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 6 }}>
-                        <input className="form-control" value={r.cognome} onChange={e => cambia(r.id, 'cognome', e.target.value)} placeholder="Cognome" aria-label="Cognome" />
-                        <input className="form-control" value={r.nome} onChange={e => cambia(r.id, 'nome', e.target.value)} placeholder="Nome" aria-label="Nome" />
-                        <input className="form-control" type="date" value={r.data_nascita} onChange={e => cambia(r.id, 'data_nascita', e.target.value)} aria-label="Data di nascita" />
-                        <input className="form-control" value={r.telefono} onChange={e => cambia(r.id, 'telefono', e.target.value)} placeholder="Telefono" aria-label="Telefono" />
-                        <input className="form-control" value={r.indirizzo} onChange={e => cambia(r.id, 'indirizzo', e.target.value)} placeholder="Indirizzo" aria-label="Indirizzo" style={{ gridColumn: '1 / -1' }} />
+                    </div>
+                    {r.nota && r.esito !== 'no' && <div className="text-xs text-muted" style={{ marginTop: 4 }}>{r.nota}</div>}
+
+                    {r.modifica ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 6, marginTop: 8 }}>
+                        <input className="form-control" value={r.cognome} onChange={e => cambia(r.id, { cognome: e.target.value })} placeholder="Cognome" aria-label="Cognome" />
+                        <input className="form-control" value={r.nome} onChange={e => cambia(r.id, { nome: e.target.value })} placeholder="Nome" aria-label="Nome" />
+                        <input className="form-control" type="date" value={r.data_nascita} onChange={e => cambia(r.id, { data_nascita: e.target.value })} aria-label="Data di nascita" />
+                        <input className="form-control" value={r.telefono} onChange={e => cambia(r.id, { telefono: e.target.value })} placeholder="Telefono" aria-label="Telefono" />
+                        <input className="form-control" value={r.indirizzo} onChange={e => cambia(r.id, { indirizzo: e.target.value })} placeholder="Indirizzo" aria-label="Indirizzo" style={{ gridColumn: '1 / -1' }} />
+                      </div>
+                    ) : r.esito !== 'no' && (
+                      <div className="text-sm" style={{ marginTop: 6, color: 'var(--gray-700)', lineHeight: 1.6 }}>
+                        <div>Nato il: <b>{dataIT(r.data_nascita) || '—'}</b> · Tel: <b>{r.telefono || '—'}</b></div>
+                        <div>Indirizzo: <b>{r.indirizzo || '—'}</b></div>
                       </div>
                     )}
+
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {r.modifica ? (
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => conferma(r)}>Salva e conferma</button>
+                      ) : r.esito === 'attesa' ? (
+                        <>
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => conferma(r)}>Conferma</button>
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => cambia(r.id, { modifica: true })}>Modifica</button>
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => cambia(r.id, { esito: 'no' })}>Scarta</button>
+                        </>
+                      ) : r.esito === 'ok' ? (
+                        <>
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => cambia(r.id, { esito: 'attesa', modifica: true })}>Modifica</button>
+                          <button type="button" className="btn btn-outline btn-sm" onClick={() => cambia(r.id, { esito: 'no' })}>Scarta</button>
+                        </>
+                      ) : (
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => cambia(r.id, { esito: 'attesa' })}>Ripristina</button>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -281,8 +335,10 @@ export default function ImportaBambini({ classi, esistenti, classeIniziale, onCh
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-outline btn-block" onClick={() => { setFase('scelta'); setRighe([]) }} disabled={salvando}>Altro file</button>
-              <button className="btn btn-primary btn-block" onClick={importa} disabled={salvando || scelte.length === 0}>
-                {salvando ? 'Importazione…' : `Importa ${scelte.length} ${scelte.length === 1 ? 'bambino' : 'bambini'}`}
+              <button className="btn btn-primary btn-block" onClick={importa} disabled={salvando || confermati.length === 0 || inAttesa.length > 0}>
+                {salvando ? 'Importazione…'
+                  : inAttesa.length > 0 ? `Ancora ${inAttesa.length} da decidere`
+                  : `Importa ${confermati.length} ${confermati.length === 1 ? 'bambino' : 'bambini'}`}
               </button>
             </div>
           </>
