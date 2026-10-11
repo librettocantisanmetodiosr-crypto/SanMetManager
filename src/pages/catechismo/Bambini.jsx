@@ -32,17 +32,20 @@ export default function Bambini() {
     const { data: cl } = await supabase.from('classi')
       .select('id, nome, anno_cammino, classi_catechisti(profili(nome, cognome))')
       .eq('attiva', true).order('nome')
-    setClassi(cl || [])
 
     let q = supabase.from('bambini')
       .select('id, nome, cognome, data_nascita, indirizzo, telefono1, telefono2, note, classe_id, da_verificare, nota_verifica, classi(nome)')
       .eq('attivo', true).order('cognome')
 
+    // Un catechista vede solo le proprie classi, anche nell'elenco dei filtri
     if (!isAdmin && tuttiRuoli.includes('catechista')) {
       const { data: cc } = await supabase.from('classi_catechisti').select('classe_id').eq('catechista_id', profilo.id)
       const ids = (cc || []).map(x => x.classe_id)
+      setClassi((cl || []).filter(c => ids.includes(c.id)))
       if (ids.length > 0) q = q.in('classe_id', ids)
       else { setBambini([]); setLoading(false); return }
+    } else {
+      setClassi(cl || [])
     }
     const { data } = await q
     setBambini(data || [])
@@ -170,6 +173,7 @@ export default function Bambini() {
 
     const sezioni = gruppiStampa.map(g => {
       const classe = classi.find(c => c.id === g.id)
+      const conNote = g.membri.some(b => b.note)
       const righe = g.membri.map((b, i) => `
         <tr>
           <td class="n">${i + 1}</td>
@@ -177,7 +181,8 @@ export default function Bambini() {
           <td>${esc(b.nome)}</td>
           <td>${fmtGG(b.data_nascita)}</td>
           <td>${esc(b.indirizzo)}</td>
-          <td>${esc(b.telefono1 || b.telefono2)}</td>
+          <td>${esc([b.telefono1, b.telefono2].filter(Boolean).join(' / '))}</td>
+          ${conNote ? `<td>${esc(b.note)}</td>` : ''}
         </tr>`).join('')
       return `
         <section>
@@ -191,7 +196,7 @@ export default function Bambini() {
           </div>
           <table>
             <thead>
-              <tr><th class="n">N</th><th>COGNOME</th><th>NOME</th><th>DATA</th><th>INDIRIZZO</th><th>TELEFONO</th></tr>
+              <tr><th class="n">N</th><th>COGNOME</th><th>NOME</th><th>DATA</th><th>INDIRIZZO</th><th>TELEFONO</th>${conNote ? '<th>NOTE</th>' : ''}</tr>
             </thead>
             <tbody>${righe}</tbody>
           </table>
@@ -307,10 +312,10 @@ export default function Bambini() {
       <div className="flex items-center justify-between mb-4" style={{ gap:10, flexWrap:'wrap' }}>
         <h1>Bambini</h1>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          {isAdmin && (
+          {(isAdmin || tuttiRuoli.includes('catechista')) && (
             <button className="btn btn-outline btn-sm" onClick={stampaElenco} style={{ gap:6 }} title="Elenco impaginato da stampare o salvare in PDF">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7"/><path d="M6 17H4a2 2 0 0 1-2-2v-4h20v4a2 2 0 0 1-2 2h-2"/></svg>
-              Elenco
+              Elenco PDF
             </button>
           )}
           {isAdmin && (

@@ -35,7 +35,7 @@ export default function Turni() {
   const [generando, setGenerando] = useState(false)
   const [pannello, setPannello] = useState(false)
 
-  const isAdmin = ['admin', 'parroco'].some(r => tuttiRuoli.includes(r))
+  const isAdmin = ['admin', 'parroco', 'responsabile'].some(r => tuttiRuoli.includes(r))
   const gestisce = isAdmin || !!io?.gestisce_turni
 
   useEffect(() => { if (profilo) carica() }, [profilo, anno, mese])

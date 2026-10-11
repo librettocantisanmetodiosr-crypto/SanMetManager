@@ -8,7 +8,7 @@ const vuotoStanza = { nome:'', capacita:'', note:'' }
 export default function Stanze() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isAdmin = ['admin','parroco','responsabile_neo'].includes(profilo?.ruolo)
+  const isAdmin = ['admin','parroco','responsabile','responsabile_neo'].includes(profilo?.ruolo)
   const [stanze, setStanze] = useState([])
   const [comunita, setComunita] = useState([])
   const [prenotazioni, setPrenotazioni] = useState([])

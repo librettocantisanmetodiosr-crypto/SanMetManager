@@ -50,3 +50,33 @@ where schemaname = 'public'
   and (coalesce(qual,'') || coalesce(with_check,'')) like '%''segreteria''%'
   and (coalesce(qual,'') || coalesce(with_check,'')) not like '%''responsabile''%'
 order by 1, 2;
+
+-- ═══════════════════════════════════════════════════
+-- SECONDA PARTE (11 ottobre 2026) — le regole che non nominavano la
+-- segreteria erano rimaste fuori dal primo giro: canti, scalette, turni,
+-- lettere, avvisi neocatecumenali, presenze del coro e alcune eliminazioni.
+-- Per questo la responsabile non vedeva il tasto "Aggiungi" nei canti.
+--
+-- Restano volutamente escluse: archivio_file (sezione privata con PIN),
+-- profili in scrittura, registro_modifiche, presenza_utenti, log_attivita.
+-- APPLICATO l'11 ottobre 2026.
+-- ═══════════════════════════════════════════════════
+
+do $$
+declare r record; q text; w text;
+begin
+  for r in
+    select tablename, policyname, qual, with_check from pg_policies
+    where schemaname = 'public'
+      and tablename in ('avvisi_neo','canti','classi','eventi_calendario','lettere','piani_turni',
+                        'presenze_coro','rubrica','scalette','scalette_canti','turni')
+      and (coalesce(qual,'') || coalesce(with_check,'')) like '%''admin''::text,%'
+      and (coalesce(qual,'') || coalesce(with_check,'')) not like '%''responsabile''%'
+  loop
+    q := replace(r.qual,       '''admin''::text,', '''admin''::text, ''responsabile''::text,');
+    w := replace(r.with_check, '''admin''::text,', '''admin''::text, ''responsabile''::text,');
+    execute format('alter policy %I on public.%I %s %s', r.policyname, r.tablename,
+      case when q is not null then 'using (' || q || ')' else '' end,
+      case when w is not null then 'with check (' || w || ')' else '' end);
+  end loop;
+end $$;

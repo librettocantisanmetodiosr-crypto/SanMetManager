@@ -6,7 +6,7 @@ import { useToast } from '../../hooks/useToast'
 export default function Avvisi() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isResp = ['admin','parroco','responsabile_neo'].includes(profilo?.ruolo)
+  const isResp = ['admin','parroco','responsabile','responsabile_neo'].includes(profilo?.ruolo)
   const [avvisi, setAvvisi] = useState([])
   const [comunita, setComunita] = useState([])
   const [loading, setLoading] = useState(true)

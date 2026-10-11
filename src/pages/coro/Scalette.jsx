@@ -6,7 +6,7 @@ import { useToast } from '../../hooks/useToast'
 export default function Scalette() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isResp = ['admin','parroco','responsabile_coro'].includes(profilo?.ruolo)
+  const isResp = ['admin','parroco','responsabile','responsabile_coro'].includes(profilo?.ruolo)
 
   const [scalette, setScalette] = useState([])
   const [canti, setCanti] = useState([])

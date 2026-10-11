@@ -6,7 +6,7 @@ import { useToast } from '../../hooks/useToast'
 export default function Coristi() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const canEdit = ['admin','parroco','responsabile_coro'].includes(profilo?.ruolo)
+  const canEdit = ['admin','parroco','responsabile','responsabile_coro'].includes(profilo?.ruolo)
   const [coristi, setCoristi] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)

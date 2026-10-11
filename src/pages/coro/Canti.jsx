@@ -387,7 +387,7 @@ async function extractTextFromPdf(file) {
 export default function Canti() {
   const { profilo } = useAuth()
   const { toast, ToastContainer } = useToast()
-  const isResp = ['admin','parroco','responsabile_coro'].includes(profilo?.ruolo)
+  const isResp = ['admin','parroco','responsabile','responsabile_coro'].includes(profilo?.ruolo)
 
   const [canti, setCanti] = useState([])
   const [loading, setLoading] = useState(true)

@@ -30,10 +30,10 @@ export default function Dashboard() {
   const isAdmin = ['admin','parroco','segreteria','responsabile'].some(r => tuttiRuoli.includes(r))
   const gestisceUtenti = profilo?.ruolo === 'admin'   // utenti e permessi: solo l'amministratore
   const hasCatechismo = ['admin','parroco','segreteria','catechista','responsabile'].some(r => tuttiRuoli.includes(r))
-  const hasComitato = ['admin','parroco','comitato','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
-  const hasComitaEdit = ['admin','parroco','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
-  const hasCoro = ['admin','parroco','responsabile_coro','corista'].some(r => tuttiRuoli.includes(r))
-  const hasNeo = ['admin','parroco','neocatecumenale','responsabile_neo'].some(r => tuttiRuoli.includes(r))
+  const hasComitato = ['admin','parroco','responsabile','comitato','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
+  const hasComitaEdit = ['admin','parroco','responsabile','responsabile_comitato'].some(r => tuttiRuoli.includes(r))
+  const hasCoro = ['admin','parroco','responsabile','responsabile_coro','corista'].some(r => tuttiRuoli.includes(r))
+  const hasNeo = ['admin','parroco','responsabile','neocatecumenale','responsabile_neo'].some(r => tuttiRuoli.includes(r))
 
   useEffect(() => {
     if (!profilo) return
