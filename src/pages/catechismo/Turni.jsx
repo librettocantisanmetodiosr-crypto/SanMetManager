@@ -16,6 +16,9 @@ const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno',
 
 const nomeDi = (p) => p ? `${p.nome} ${p.cognome}` : '—'
 
+// Ogni sabato una classe porta i doni all'altare e legge le preghiere dei fedeli
+const COMPITO_CLASSE = 'Offertorio e preghiere dei fedeli'
+
 export default function Turni() {
   const { profilo, tuttiRuoli } = useAuth()
   const { toast, ToastContainer } = useToast()
@@ -34,6 +37,9 @@ export default function Turni() {
   const [loading, setLoading] = useState(true)
   const [generando, setGenerando] = useState(false)
   const [pannello, setPannello] = useState(false)
+  const [classi, setClassi] = useState([])               // classi attive del sabato
+  const [storicoClassi, setStoricoClassi] = useState([]) // { classe_id, data } gia' di turno
+  const [classiOk, setClassiOk] = useState(false)        // migrazione_turni_classi.sql applicata
 
   const isAdmin = ['admin', 'parroco', 'responsabile'].some(r => tuttiRuoli.includes(r))
   const gestisce = isAdmin || !!io?.gestisce_turni
@@ -45,7 +51,7 @@ export default function Turni() {
     const primo = `${anno}-${String(mese).padStart(2, '0')}-01`
     const ultimo = new Date(anno, mese, 0).toISOString().split('T')[0]
 
-    const [me, dt, pers, cc, pi, st] = await Promise.all([
+    const [me, dt, pers, cc, pi, st, cl, sc] = await Promise.all([
       supabase.from('profili').select('id, partecipa_turni, gestisce_turni').eq('id', profilo.id).single(),
       supabase.from('date_catechismo').select('id, data, descrizione')
         .gte('data', primo).lte('data', ultimo).order('data'),
@@ -54,6 +60,8 @@ export default function Turni() {
       supabase.from('classi_catechisti').select('catechista_id, classe_id'),
       supabase.from('piani_turni').select('*').eq('anno', anno).eq('mese', mese).maybeSingle(),
       supabase.from('turni').select('profilo_id, ruolo, date_catechismo(data)'),
+      supabase.from('classi').select('id, nome, giorno').eq('attiva', true).order('nome'),
+      supabase.from('turni').select('classe_id, date_catechismo(data)').eq('ruolo', 'classe'),
     ])
 
     setIo(me.data || null)
@@ -68,6 +76,14 @@ export default function Turni() {
     })
     setClassiDi(mappa)
 
+    // se la colonna classe_id non c'e' ancora, la rotazione delle classi resta spenta
+    const conClassi = !sc.error
+    setClassiOk(conClassi)
+    setClassi((cl.data || []).filter(c => !c.giorno || c.giorno === 'Sabato'))
+    setStoricoClassi((sc.data || [])
+      .filter(t => t.classe_id)
+      .map(t => ({ classe_id: t.classe_id, data: t.date_catechismo?.data || null })))
+
     const conteggi = {}
     ;(st.data || []).forEach(t => {
       if (t.profilo_id) conteggi[t.profilo_id] = (conteggi[t.profilo_id] || 0) + 1
@@ -80,7 +96,7 @@ export default function Turni() {
     setPiano(pi.data || null)
     if (pi.data) {
       const { data: tt } = await supabase.from('turni')
-        .select('id, data_id, ruolo, posizione, profilo_id')
+        .select('id, data_id, ruolo, posizione, profilo_id' + (conClassi ? ', classe_id' : ''))
         .eq('piano_id', pi.data.id)
       setTurni(tt || [])
     } else {
@@ -97,6 +113,49 @@ export default function Turni() {
     const cb = classiDi[b] || new Set()
     for (const x of ca) if (cb.has(x)) return true
     return false
+  }
+
+  // ── Classe del sabato ────────────────────────────────────────
+  // Giro fisso: tocca alla classe che e' stata di turno meno di recente
+  // (chi non c'e' mai stata va per prima), a parita' in ordine di nome.
+  // Parte dallo storico reale, cosi' il giro continua da un mese all'altro.
+  const rotazioneClassi = (giorni) => {
+    if (!classiOk || classi.length === 0 || giorni.length === 0) return []
+    const primaData = giorni[0].data
+    const ultima = {}
+    classi.forEach(c => { ultima[c.id] = '' })
+    storicoClassi.forEach(t => {
+      if (ultima[t.classe_id] === undefined || !t.data || t.data >= primaData) return
+      if (t.data > ultima[t.classe_id]) ultima[t.classe_id] = t.data
+    })
+    return giorni.map(d => {
+      const c = [...classi].sort((a, b) =>
+        ultima[a.id].localeCompare(ultima[b.id]) || a.nome.localeCompare(b.nome))[0]
+      ultima[c.id] = d.data
+      return { data_id: d.id, ruolo: 'classe', posizione: 1, profilo_id: null, classe_id: c.id }
+    })
+  }
+
+  const turniClasse = turni.filter(t => t.ruolo === 'classe')
+  const classeDelGiorno = (dataId) => turniClasse.find(t => t.data_id === dataId)
+  const nomeClasse = (id) => classi.find(c => c.id === id)?.nome || '—'
+
+  // per i piani creati prima di questa funzione
+  const assegnaClassi = async () => {
+    const nuove = rotazioneClassi(date).map(t => ({ ...t, piano_id: piano.id }))
+    if (nuove.length === 0) return toast('Nessuna classe del sabato attiva', 'error')
+    const { error } = await supabase.from('turni').insert(nuove)
+    if (error) return toast('Errore: ' + error.message, 'error', 6000)
+    toast('Classi assegnate', 'success')
+    carica()
+  }
+
+  const cambiaClasse = async (turno, nuovaId) => {
+    const { data, error } = await supabase.from('turni')
+      .update({ classe_id: nuovaId || null }).eq('id', turno.id).select('id')
+    if (error) return toast('Errore: ' + error.message, 'error')
+    if (!data?.length) return toast('Non modificato: permessi insufficienti', 'error', 6000)
+    setTurni(prev => prev.map(t => t.id === turno.id ? { ...t, classe_id: nuovaId || null } : t))
   }
 
   // ── Generazione del piano ────────────────────────────────────
@@ -192,7 +251,7 @@ export default function Turni() {
     if (e1) { setGenerando(false); return toast('Errore: ' + e1.message, 'error', 6000) }
 
     const { error: e2 } = await supabase.from('turni')
-      .insert(nuovi.map(t => ({ ...t, piano_id: p.id })))
+      .insert([...nuovi, ...rotazioneClassi(date)].map(t => ({ ...t, piano_id: p.id })))
     setGenerando(false)
     if (e2) return toast('Errore: ' + e2.message, 'error', 6000)
 
@@ -251,6 +310,8 @@ export default function Turni() {
     date.forEach(d => {
       const g = new Date(d.data + 'T00:00:00')
       righe.push(`*Sabato ${g.getDate()} ${MESI[g.getMonth()]}*`)
+      const tc = classeDelGiorno(d.id)
+      if (tc?.classe_id) righe.push(`${COMPITO_CLASSE}: classe ${nomeClasse(tc.classe_id)}`)
       RUOLI.forEach(r => {
         if (r.key === 'offertorio') {
           const due = [1, 2].map(pos => {
@@ -291,6 +352,8 @@ export default function Turni() {
 
   // ── Vista ────────────────────────────────────────────────────
   const mioTurni = turni.filter(t => t.profilo_id === profilo?.id)
+  const mieClassi = classiDi[profilo?.id] || new Set()
+  const turniMiaClasse = turniClasse.filter(t => t.classe_id && mieClassi.has(t.classe_id))
   const pianoVisibile = piano && (piano.stato === 'approvato' || gestisce)
 
   return (
@@ -301,7 +364,7 @@ export default function Turni() {
         <div>
           <h1>Turni liturgici</h1>
           <div className="text-xs text-muted" style={{ marginTop: 2 }}>
-            Letture e offertorio del sabato
+            Letture, offertorio e classe del sabato
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -325,7 +388,7 @@ export default function Turni() {
       </div>
 
       {/* Il mio turno — lo vede chiunque */}
-      {piano?.stato === 'approvato' && mioTurni.length > 0 && (
+      {piano?.stato === 'approvato' && (mioTurni.length > 0 || turniMiaClasse.length > 0) && (
         <div className="card" style={{ marginBottom: 16, background: 'var(--primary-bg)', border: 'none' }}>
           <div className="card-body">
             <div className="dash-label" style={{ color: 'var(--primary)' }}>I tuoi turni questo mese</div>
@@ -338,6 +401,18 @@ export default function Turni() {
                   <Icon name="date" size={16} style={{ color: 'var(--primary)' }} />
                   <span className="text-sm">
                     <strong>Sabato {new Date(d.data + 'T00:00:00').getDate()}</strong> — {r?.label}
+                  </span>
+                </div>
+              )
+            })}
+            {turniMiaClasse.map(t => {
+              const d = date.find(x => x.id === t.data_id)
+              if (!d) return null
+              return (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 7 }}>
+                  <Icon name="classi" size={16} style={{ color: 'var(--primary)' }} />
+                  <span className="text-sm">
+                    <strong>Sabato {new Date(d.data + 'T00:00:00').getDate()}</strong> — la tua classe {nomeClasse(t.classe_id)}: offertorio e preghiere dei fedeli
                   </span>
                 </div>
               )
@@ -420,6 +495,9 @@ export default function Turni() {
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                     Copia per WhatsApp
                   </button>
+                  {gestisce && classiOk && classi.length > 0 && turniClasse.length === 0 && (
+                    <button className="btn btn-outline btn-sm" onClick={assegnaClassi}>Assegna classi del sabato</button>
+                  )}
                   {gestisce && piano.stato === 'bozza' && (
                     <button className="btn btn-primary btn-sm" onClick={approva}>Approva</button>
                   )}
@@ -442,6 +520,37 @@ export default function Turni() {
                       {d.descrizione && <span className="n">{d.descrizione}</span>}
                     </div>
                     <div className="card" style={{ overflow: 'hidden' }}>
+                      {(() => {
+                        const tc = classeDelGiorno(d.id)
+                        if (!tc) return null
+                        return (
+                          <div className="flex items-center justify-between"
+                            style={{ padding: '11px 15px', borderBottom: '1px solid var(--gray-100)', gap: 10, background: 'var(--primary-bg)' }}>
+                            <span style={{ fontSize: '0.86rem', fontWeight: 700, minWidth: 130 }}>
+                              Classe di turno
+                              <span className="text-xs text-muted" style={{ display: 'block', fontWeight: 500 }}>{COMPITO_CLASSE.toLowerCase()}</span>
+                            </span>
+                            {gestisce ? (
+                              <select
+                                className="form-control"
+                                style={{ height: 38, fontSize: '0.84rem', padding: '0 10px', maxWidth: 220 }}
+                                value={tc.classe_id || ''}
+                                onChange={e => cambiaClasse(tc, e.target.value)}
+                              >
+                                <option value="">— nessuna —</option>
+                                {classi.map(c => (
+                                  <option key={c.id} value={c.id}>{c.nome}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-sm" style={{ fontWeight: 600 }}>
+                                {tc.classe_id ? nomeClasse(tc.classe_id) : '—'}
+                                {tc.classe_id && mieClassi.has(tc.classe_id) && <span className="badge badge-green" style={{ marginLeft: 8 }}>la tua</span>}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
                       {RUOLI.map(r => (
                         [...Array(r.posti)].map((_, i) => {
                           const pos = i + 1
