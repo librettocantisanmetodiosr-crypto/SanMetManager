@@ -49,7 +49,7 @@ export default function Turni() {
   const carica = async () => {
     setLoading(true)
     const primo = `${anno}-${String(mese).padStart(2, '0')}-01`
-    const ultimo = new Date(anno, mese, 0).toISOString().split('T')[0]
+    const ultimo = `${anno}-${String(mese).padStart(2, '0')}-${String(new Date(anno, mese, 0).getDate()).padStart(2, '0')}` // ultimo giorno in ora locale: toISOString passa a UTC e perde il 31
 
     const [me, dt, pers, cc, pi, st, cl, sc] = await Promise.all([
       supabase.from('profili').select('id, partecipa_turni, gestisce_turni').eq('id', profilo.id).single(),
